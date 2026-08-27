@@ -42,6 +42,39 @@
       overflow-y: auto;
     }
 
+    /* Top Right Floating Toolbar */
+    #top-right-toolbar {
+      position: absolute;
+      top: 16px;
+      right: 50px;
+      z-index: 100;
+      display: flex;
+      gap: 8px;
+    }
+
+    .top-action-btn {
+      background: rgba(13, 17, 23, 0.90);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #f0f6fc;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(10px);
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .top-action-btn:hover {
+      background: rgba(255, 170, 0, 0.2);
+      border-color: #ffaa00;
+      color: #ffaa00;
+    }
+
     .panel-header h2 {
       font-size: 15px; font-weight: 700;
       letter-spacing: 1px; margin: 0;
@@ -178,6 +211,11 @@
   </style>
 </head>
 <body>
+
+  <!-- Floating Control Button Top Right -->
+  <div id="top-right-toolbar">
+    <button id="undo-point-btn" class="top-action-btn" title="Undo Last Point (Ctrl+Z)">↩ Undo Point</button>
+  </div>
 
   <div id="side-panel">
     <div class="panel-header">
@@ -343,8 +381,23 @@
 
       window.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') finishActiveTrack();
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+          e.preventDefault();
+          undoLastPoint();
+        }
       });
     });
+
+    document.getElementById('undo-point-btn').addEventListener('click', undoLastPoint);
+
+    function undoLastPoint() {
+      if (!activeLineId) return;
+      const activeLine = lines.find(r => r.id === activeLineId);
+      if (activeLine && activeLine.coordinates.length > 0) {
+        activeLine.coordinates.pop();
+        renderAll();
+      }
+    }
 
     document.getElementById('done-editing-btn').addEventListener('click', () => {
       isEditingMode = !isEditingMode;

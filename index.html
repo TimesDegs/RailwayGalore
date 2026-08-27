@@ -645,35 +645,64 @@
       }
     }
 
+    // Centripetal Catmull-Rom Spline implementation (eliminates loops, sharp inward kinks, and overshoots)
     function buildCatmullRomRailwayPath(pts, samplesPerSegment = 16) {
       if (pts.length < 2) return null;
       if (pts.length === 2) return turf.lineString(pts);
 
+      // Virtual extended endpoints for smooth start/end tangents
+      const p0_ext = [2 * pts[0][0] - pts[1][0], 2 * pts[0][1] - pts[1][1]];
+      const pN_ext = [2 * pts[pts.length - 1][0] - pts[pts.length - 2][0], 2 * pts[pts.length - 1][1] - pts[pts.length - 2][1]];
+
+      const fullPts = [p0_ext, ...pts, pN_ext];
       const pathCoords = [];
-      const extendedPts = [pts[0], ...pts, pts[pts.length - 1]];
 
-      for (let i = 0; i < extendedPts.length - 3; i++) {
-        const p0 = extendedPts[i];
-        const p1 = extendedPts[i + 1];
-        const p2 = extendedPts[i + 2];
-        const p3 = extendedPts[i + 3];
+      const alpha = 0.5; // Centripetal parameterization prevents cusps & loops
 
-        for (let tStep = 0; tStep < samplesPerSegment; tStep++) {
-          const t = tStep / samplesPerSegment;
-          const t2 = t * t;
-          const t3 = t2 * t;
+      for (let i = 0; i < fullPts.length - 3; i++) {
+        const p0 = fullPts[i];
+        const p1 = fullPts[i + 1];
+        const p2 = fullPts[i + 2];
+        const p3 = fullPts[i + 3];
 
-          const x = 0.5 * ((2 * p1[0]) +
-            (-p0[0] + p2[0]) * t +
-            (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 +
-            (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3);
+        function getT(t, pA, pB) {
+          const dx = pB[0] - pA[0];
+          const dy = pB[1] - pA[1];
+          return t + Math.pow(dx * dx + dy * dy, alpha / 2);
+        }
 
-          const y = 0.5 * ((2 * p1[1]) +
-            (-p0[1] + p2[1]) * t +
-            (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 +
-            (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3);
+        const t0 = 0;
+        const t1 = getT(t0, p0, p1);
+        const t2 = getT(t1, p1, p2);
+        const t3 = getT(t2, p2, p3);
 
-          pathCoords.push([x, y]);
+        if (t1 === t0 || t2 === t1 || t3 === t2) {
+          pathCoords.push(p1);
+          continue;
+        }
+
+        for (let step = 0; step < samplesPerSegment; step++) {
+          const t = t1 + (step / samplesPerSegment) * (t2 - t1);
+
+          const A1_x = ((t1 - t) * p0[0] + (t - t0) * p1[0]) / (t1 - t0);
+          const A1_y = ((t1 - t) * p0[1] + (t - t0) * p1[1]) / (t1 - t0);
+
+          const A2_x = ((t2 - t) * p1[0] + (t - t1) * p2[0]) / (t2 - t1);
+          const A2_y = ((t2 - t) * p1[1] + (t - t1) * p2[1]) / (t2 - t1);
+
+          const A3_x = ((t3 - t) * p2[0] + (t - t2) * p3[0]) / (t3 - t2);
+          const A3_y = ((t3 - t) * p2[1] + (t - t2) * p3[1]) / (t3 - t2);
+
+          const B1_x = ((t2 - t) * A1_x + (t - t0) * A2_x) / (t2 - t0);
+          const B1_y = ((t2 - t) * A1_y + (t - t0) * A2_y) / (t2 - t0);
+
+          const B2_x = ((t3 - t) * A2_x + (t - t1) * A3_x) / (t3 - t1);
+          const B2_y = ((t3 - t) * A2_y + (t - t1) * A3_y) / (t3 - t1);
+
+          const C_x = ((t2 - t) * B1_x + (t - t1) * B2_x) / (t2 - t1);
+          const C_y = ((t2 - t) * B1_y + (t - t1) * B2_y) / (t2 - t1);
+
+          pathCoords.push([C_x, C_y]);
         }
       }
 
@@ -686,6 +715,7 @@
 
       if (!isEditingMode) return;
 
+      // Only render draggable node markers for the currently ACTIVE line so finished lines remain locked
       const activeLine = lines.find(r => r.id === activeLineId);
       if (activeLine && activeLine.coordinates) {
         activeLine.coordinates.forEach((coords, idx) => {

@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Railway Route Alignment Studio</title>
+  
+  <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    body, html {
+      margin: 0; padding: 0;
+      width: 100%; height: 100%;
+      overflow: hidden;
+      font-family: 'Inter', sans-serif;
+      background: #090c10;
+    }
+
+    #map { width: 100vw; height: 100vh; }
+
+    #side-panel {
+      position: absolute;
+      top: 16px; left: 16px;
+      width: 320px;
+      max-height: calc(100vh - 32px);
+      background: rgba(13, 17, 23, 0.94);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #f0f6fc;
+      padding: 16px;
+      border-radius: 14px;
+      box-sizing: border-box;
+      z-index: 100;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(16px);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
+    }
+
+    .panel-header h2 {
+      font-size: 15px; font-weight: 700;
+      letter-spacing: 1px; margin: 0;
+      color: #ffaa00;
+    }
+
+    .sub-title { font-size: 11px; color: #8b949e; }
+
+    .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+    .tool-btn {
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      color: #c9d1d9;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600; font-size: 11px;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+
+    .tool-btn.active {
+      background: rgba(255, 170, 0, 0.2);
+      color: #ffaa00;
+      border-color: #ffaa00;
+    }
+
+    .toggle-row {
+      display: flex; justify-content: space-between; align-items: center;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 8px 12px; border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 11px;
+    }
+
+    .switch { position: relative; display: inline-block; width: 36px; height: 18px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #30363d; border-radius: 20px; transition: .3s;
+    }
+    .slider:before {
+      position: absolute; content: "";
+      height: 12px; width: 12px; left: 3px; bottom: 3px;
+      background-color: white; border-radius: 50%; transition: .3s;
+    }
+    input:checked + .slider { background-color: #d97706; }
+    input:checked + .slider:before { transform: translateX(18px); }
+
+    .control-group { display: flex; flex-direction: column; gap: 6px; }
+    .label-row { display: flex; justify-content: space-between; font-size: 11px; color: #c9d1d9; }
+    .label-row strong { color: #ffaa00; }
+
+    input[type="range"] { width: 100%; accent-color: #ffaa00; cursor: pointer; }
+
+    .primary-btn {
+      width: 100%; padding: 10px;
+      background: #d97706; color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px; cursor: pointer;
+      font-weight: 600; font-size: 12px;
+    }
+
+    .done-btn {
+      width: 100%; padding: 10px;
+      background: #238636; color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px; cursor: pointer;
+      font-weight: 600; font-size: 12px;
+    }
+
+    .kml-btn {
+      width: 100%; padding: 10px;
+      background: #1f6beb; color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px; cursor: pointer;
+      font-weight: 600; font-size: 12px;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+
+    .stats-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px; padding: 10px;
+      display: flex; flex-direction: column; gap: 4px;
+      font-size: 11px;
+    }
+
+    .stat-row { display: flex; justify-content: space-between; align-items: center; }
+    .stat-label { color: #8b949e; }
+    .stat-value { font-weight: 600; color: #f0f6fc; }
+
+    .finished-list-section { display: flex; flex-direction: column; gap: 6px; }
+    .finished-list-section label { font-size: 11px; color: #c9d1d9; }
+
+    .roads-list { max-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+    .road-item {
+      display: flex; justify-content: space-between; align-items: center;
+      background: rgba(255, 255, 255, 0.05); padding: 6px 10px;
+      border-radius: 6px; font-size: 11px; cursor: pointer;
+      border: 1px solid transparent;
+    }
+    .road-item.selected { border: 1px solid #ffaa00; background: rgba(255, 170, 0, 0.1); }
+
+    .action-icon-btn { background: none; border: none; color: #8b949e; cursor: pointer; font-size: 11px; }
+
+    #clear-btn {
+      margin-top: auto; padding: 8px;
+      background: rgba(255, 59, 48, 0.15); color: #ff453a;
+      border: 1px solid rgba(255, 59, 48, 0.3);
+      border-radius: 8px; cursor: pointer;
+      font-weight: 600; font-size: 11px;
+    }
+
+    .custom-node-marker {
+      width: 12px; height: 12px;
+      background: #ffffff;
+      border: 2px solid #d97706;
+      border-radius: 50%;
+      cursor: grab;
+      box-shadow: 0 0 6px rgba(0,0,0,0.8);
+      pointer-events: auto !important;
+    }
+
+    .station-marker {
+      cursor: grab;
+      pointer-events: auto !important;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="side-panel">
+    <div class="panel-header">
+      <h2>NSCR ROUTE STUDIO</h2>
+      <span class="sub-title">Exact Node-Lock Alignment</span>
+    </div>
+
+    <div class="tool-grid">
+      <button id="main-road-btn" class="tool-btn active">🚆 Main Line</button>
+      <button id="spur-road-btn" class="tool-btn">🔀 Branch Line</button>
+    </div>
+    <button id="station-tool-btn" class="tool-btn" style="width: 100%;">🚉 Place Station</button>
+
+    <div class="toggle-row">
+      <span id="dual-label">Double Track</span>
+      <label class="switch">
+        <input type="checkbox" id="mirror-toggle">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="control-group">
+      <div class="label-row">
+        <span>Track Spacing</span>
+        <strong id="separation-val">12 m</strong>
+      </div>
+      <input type="range" id="separation-dist" min="4" max="50" value="12">
+    </div>
+
+    <div class="control-group">
+      <div class="label-row">
+        <span>Station Length</span>
+        <strong id="station-len-val">210 m</strong>
+      </div>
+      <input type="range" id="station-length" min="120" max="300" value="210">
+    </div>
+
+    <div class="control-group">
+      <div class="label-row">
+        <span>Station Direction</span>
+        <strong id="station-rot-val">0°</strong>
+      </div>
+      <input type="range" id="station-rotation" min="0" max="359" value="0">
+    </div>
+
+    <div class="control-group">
+      <div class="label-row">
+        <span>Curve Resolution</span>
+        <strong id="tension-val">16 pts</strong>
+      </div>
+      <input type="range" id="curve-tension" min="4" max="32" value="16">
+    </div>
+
+    <button id="finish-btn" class="primary-btn">Finish Segment [Enter]</button>
+    <button id="done-editing-btn" class="done-btn">✔ Done Editing Alignment</button>
+    <button id="export-kml-btn" class="kml-btn">🗺️ Export to KML</button>
+
+    <div class="stats-card">
+      <div class="stat-row">
+        <span class="stat-label">Active Mode</span>
+        <span class="stat-value" id="active-status" style="color: #ffaa00;">Main Line Drafting</span>
+      </div>
+    </div>
+
+    <div class="finished-list-section">
+      <label>Alignments & Stations</label>
+      <div id="roads-list" class="roads-list"></div>
+    </div>
+
+    <button id="clear-btn">Delete Selected Element</button>
+  </div>
+
+  <div id="map"></div>
+
+  <script>
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: {
+        version: 8,
+        sources: {
+          'satellite-tiles': {
+            type: 'raster',
+            tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+            tileSize: 256
+          }
+        },
+        layers: [{ id: 'satellite-layer', type: 'raster', source: 'satellite-tiles' }]
+      },
+      center: [120.9842, 14.5995],
+      zoom: 14
+    });
+
+    map.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+    let mode = 'track'; 
+    let lines = [];
+    let stations = [];
+
+    let activeLineId = null;
+    let activeStationId = null;
+
+    let activeMarkers = [];
+    let isDraggingNode = false;
+
+    let isBranchMode = false;
+    let curveResolution = 16;
+    let isEditingMode = true;
+
+    let activeStationLength = 210;
+    let activeStationRotation = 0;
+
+    map.on('load', () => {
+      map.addSource('station-polygons-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+      map.addLayer({
+        id: 'station-roof-layer', type: 'fill', source: 'station-polygons-source',
+        paint: { 'fill-color': ['get', 'color'], 'fill-opacity': ['get', 'opacity'] }
+      });
+      map.addLayer({
+        id: 'station-outline-layer', type: 'line', source: 'station-polygons-source',
+        paint: { 'line-color': ['get', 'lineColor'], 'line-width': ['get', 'lineWidth'] }
+      });
+
+      map.addSource('rail-bed-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+      map.addLayer({
+        id: 'rail-bed-layer', type: 'line', source: 'rail-bed-source',
+        layout: { 'line-cap': 'butt', 'line-join': 'round' },
+        paint: { 'line-color': '#1f242d', 'line-width': 10, 'line-opacity': 0.95 }
+      });
+
+      map.addSource('rail-ties-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+      map.addLayer({
+        id: 'rail-ties-layer', type: 'line', source: 'rail-ties-source',
+        layout: { 'line-cap': 'butt', 'line-join': 'round' },
+        paint: { 'line-color': '#a3876a', 'line-width': 8, 'line-dasharray': [0.3, 0.5] }
+      });
+
+      map.addSource('steel-rails-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+      map.addLayer({
+        id: 'steel-rails-layer', type: 'line', source: 'steel-rails-source',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': '#f0f6fc', 'line-width': 2, 'line-gap-width': 3 }
+      });
+
+      startNewTrack('Main');
+
+      map.on('click', (e) => {
+        if (isDraggingNode || !isEditingMode) return;
+        const clickPt = [e.lngLat.lng, e.lngLat.lat];
+
+        if (mode === 'station') {
+          placeStation(clickPt);
+          return;
+        }
+
+        if (!activeLineId) startNewTrack(isBranchMode ? 'Branch' : 'Main');
+
+        const activeLine = lines.find(r => r.id === activeLineId);
+        if (!activeLine) return;
+
+        activeLine.coordinates.push(clickPt);
+        renderAll();
+      });
+
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') finishActiveTrack();
+      });
+    });
+
+    document.getElementById('done-editing-btn').addEventListener('click', () => {
+      isEditingMode = !isEditingMode;
+      const btn = document.getElementById('done-editing-btn');
+      
+      if (!isEditingMode) {
+        finishActiveTrack();
+        btn.innerText = '✏️ Resume Editing';
+        btn.style.background = '#d97706';
+        document.getElementById('active-status').innerText = 'Completed Alignment View';
+      } else {
+        btn.innerText = '✔ Done Editing Alignment';
+        btn.style.background = '#238636';
+        document.getElementById('active-status').innerText = 'Editing Active';
+      }
+      
+      renderAll();
+    });
+
+    document.getElementById('main-road-btn').addEventListener('click', () => {
+      mode = 'track'; isBranchMode = false;
+      document.getElementById('main-road-btn').classList.add('active');
+      document.getElementById('spur-road-btn').classList.remove('active');
+      document.getElementById('station-tool-btn').classList.remove('active');
+      finishActiveTrack(); startNewTrack('Main');
+    });
+
+    document.getElementById('spur-road-btn').addEventListener('click', () => {
+      mode = 'track'; isBranchMode = true;
+      document.getElementById('spur-road-btn').classList.add('active');
+      document.getElementById('main-road-btn').classList.remove('active');
+      document.getElementById('station-tool-btn').classList.remove('active');
+      finishActiveTrack(); startNewTrack('Branch');
+    });
+
+    document.getElementById('station-tool-btn').addEventListener('click', () => {
+      mode = 'station';
+      document.getElementById('station-tool-btn').classList.add('active');
+      document.getElementById('main-road-btn').classList.remove('active');
+      document.getElementById('spur-road-btn').classList.remove('active');
+      finishActiveTrack();
+      document.getElementById('active-status').innerText = 'Station Mode';
+    });
+
+    document.getElementById('mirror-toggle').addEventListener('change', (e) => {
+      const activeLine = lines.find(r => r.id === activeLineId);
+      if (activeLine) { activeLine.isDouble = e.target.checked; renderAll(); }
+    });
+
+    document.getElementById('separation-dist').addEventListener('input', (e) => {
+      const val = parseInt(e.target.value);
+      document.getElementById('separation-val').innerText = val + ' m';
+      const activeLine = lines.find(r => r.id === activeLineId);
+      if (activeLine) { activeLine.separation = val; renderAll(); }
+    });
+
+    document.getElementById('station-length').addEventListener('input', (e) => {
+      activeStationLength = parseInt(e.target.value);
+      document.getElementById('station-len-val').innerText = activeStationLength + ' m';
+      const activeStn = stations.find(s => s.id === activeStationId);
+      if (activeStn) { activeStn.length = activeStationLength; renderAll(); }
+    });
+
+    document.getElementById('station-rotation').addEventListener('input', (e) => {
+      activeStationRotation = parseInt(e.target.value);
+      document.getElementById('station-rot-val').innerText = activeStationRotation + '°';
+      const activeStn = stations.find(s => s.id === activeStationId);
+      if (activeStn) { activeStn.rotation = activeStationRotation; renderAll(); }
+    });
+
+    document.getElementById('curve-tension').addEventListener('input', (e) => {
+      curveResolution = parseInt(e.target.value);
+      document.getElementById('tension-val').innerText = curveResolution + ' pts';
+      renderAll();
+    });
+
+    document.getElementById('export-kml-btn').addEventListener('click', exportToKML);
+
+    function placeStation(coords) {
+      let calcRotation = activeStationRotation;
+
+      lines.forEach(lineItem => {
+        if (lineItem.coordinates.length < 2) return;
+        const spline = buildCatmullRomRailwayPath(lineItem.coordinates, curveResolution);
+        if (!spline) return;
+
+        const snapped = turf.nearestPointOnLine(spline, turf.point(coords));
+        const dist = turf.distance(turf.point(coords), snapped, { units: 'meters' });
+
+        if (dist < 80) {
+          coords = snapped.geometry.coordinates;
+          const index = snapped.properties.index;
+          const splineCoords = spline.geometry.coordinates;
+          if (splineCoords[index + 1]) {
+            calcRotation = turf.bearing(splineCoords[index], splineCoords[index + 1]);
+          }
+        }
+      });
+
+      const stnNumber = stations.length + 1;
+      const stnId = 'stn_' + Date.now();
+      const normalizedRot = Math.round((calcRotation % 360 + 360) % 360);
+
+      stations.push({
+        id: stnId,
+        name: `Station ${stnNumber}`,
+        center: coords,
+        length: activeStationLength,
+        rotation: normalizedRot
+      });
+
+      activeStationId = stnId;
+      activeStationRotation = normalizedRot;
+
+      document.getElementById('station-rotation').value = normalizedRot;
+      document.getElementById('station-rot-val').innerText = normalizedRot + '°';
+
+      renderAll();
+    }
+
+    function startNewTrack(type = 'Main') {
+      activeStationId = null;
+      const typeCount = lines.filter(r => r.isBranch === (type === 'Branch')).length + 1;
+      const newId = 'track_' + Date.now();
+      lines.push({
+        id: newId,
+        name: `${type} Line ${typeCount}`,
+        coordinates: [],
+        isFinished: false,
+        isBranch: type === 'Branch',
+        isDouble: false,
+        separation: 12
+      });
+      activeLineId = newId;
+      document.getElementById('active-status').innerText = `${type} Line ${typeCount}`;
+      renderAll();
+    }
+
+    function finishActiveTrack() {
+      const activeLine = lines.find(r => r.id === activeLineId);
+      if (activeLine) {
+        if (activeLine.coordinates.length < 2) {
+          lines = lines.filter(r => r.id !== activeLineId);
+        } else {
+          activeLine.isFinished = true;
+        }
+      }
+      activeLineId = null;
+      renderAll();
+    }
+
+    function renderAll() {
+      renderStations();
+      renderTracks();
+    }
+
+    function renderStations() {
+      const polygonFeatures = [];
+
+      stations.forEach(stn => {
+        const rot = stn.rotation;
+        const lenM = stn.length;
+        
+        const mainRoof = createMeterBox(stn.center, 28, lenM, rot);
+        if (mainRoof) {
+          mainRoof.properties = { color: '#00bcd4', opacity: 0.6, lineColor: '#00e5ff', lineWidth: 2 };
+          polygonFeatures.push(mainRoof);
+        }
+
+        const platformL = createOffsetMeterBox(stn.center, -16, 5, lenM * 0.9, rot);
+        if (platformL) {
+          platformL.properties = { color: '#ffaa00', opacity: 0.85, lineColor: '#ffcc00', lineWidth: 1 };
+          polygonFeatures.push(platformL);
+        }
+
+        const platformR = createOffsetMeterBox(stn.center, 16, 5, lenM * 0.9, rot);
+        if (platformR) {
+          platformR.properties = { color: '#ffaa00', opacity: 0.85, lineColor: '#ffcc00', lineWidth: 1 };
+          polygonFeatures.push(platformR);
+        }
+      });
+
+      map.getSource('station-polygons-source').setData({ type: 'FeatureCollection', features: polygonFeatures });
+    }
+
+    function createMeterBox(center, widthM, lengthM, rotationDeg) {
+      try {
+        const centerPt = turf.point(center);
+        const halfWidthKm = (widthM / 2) / 1000;
+        const halfLengthKm = (lengthM / 2) / 1000;
+
+        const p1 = turf.destination(centerPt, halfLengthKm, rotationDeg, { units: 'kilometers' });
+        const p2 = turf.destination(centerPt, halfLengthKm, (rotationDeg + 180) % 360, { units: 'kilometers' });
+
+        const c1 = turf.destination(p1, halfWidthKm, (rotationDeg + 90) % 360, { units: 'kilometers' }).geometry.coordinates;
+        const c2 = turf.destination(p1, halfWidthKm, (rotationDeg - 90 + 360) % 360, { units: 'kilometers' }).geometry.coordinates;
+        const c3 = turf.destination(p2, halfWidthKm, (rotationDeg - 90 + 360) % 360, { units: 'kilometers' }).geometry.coordinates;
+        const c4 = turf.destination(p2, halfWidthKm, (rotationDeg + 90) % 360, { units: 'kilometers' }).geometry.coordinates;
+
+        return turf.polygon([[c1, c2, c3, c4, c1]]);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function createOffsetMeterBox(center, offsetX, widthM, lengthM, rotationDeg) {
+      try {
+        const shiftedCenter = turf.destination(turf.point(center), Math.abs(offsetX) / 1000, rotationDeg + (offsetX >= 0 ? 90 : -90), { units: 'kilometers' }).geometry.coordinates;
+        return createMeterBox(shiftedCenter, widthM, lengthM, rotationDeg);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function renderTracks() {
+      const lineFeatures = [];
+
+      lines.forEach(lineItem => {
+        if (lineItem.coordinates.length < 2) return;
+
+        const mainSpline = buildCatmullRomRailwayPath(lineItem.coordinates, curveResolution);
+        if (mainSpline) lineFeatures.push(mainSpline);
+
+        if (lineItem.isDouble && mainSpline) {
+          const separation = lineItem.separation !== undefined ? lineItem.separation : 12;
+          const mirroredLine = generateParallelOffset(mainSpline, separation / 1000);
+          if (mirroredLine) lineFeatures.push(mirroredLine);
+        }
+      });
+
+      const fc = { type: 'FeatureCollection', features: lineFeatures };
+      map.getSource('rail-bed-source').setData(fc);
+      map.getSource('rail-ties-source').setData(fc);
+      map.getSource('steel-rails-source').setData(fc);
+
+      syncMarkers();
+      updateRoadsListUI();
+    }
+
+    function generateParallelOffset(splineFeature, offsetKm) {
+      try {
+        return turf.lineOffset(splineFeature, offsetKm, { units: 'kilometers' });
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function buildCatmullRomRailwayPath(pts, samplesPerSegment = 16) {
+      if (pts.length < 2) return null;
+      if (pts.length === 2) return turf.lineString(pts);
+
+      const pathCoords = [];
+      const extendedPts = [pts[0], ...pts, pts[pts.length - 1]];
+
+      for (let i = 0; i < extendedPts.length - 3; i++) {
+        const p0 = extendedPts[i];
+        const p1 = extendedPts[i + 1];
+        const p2 = extendedPts[i + 2];
+        const p3 = extendedPts[i + 3];
+
+        for (let tStep = 0; tStep < samplesPerSegment; tStep++) {
+          const t = tStep / samplesPerSegment;
+          const t2 = t * t;
+          const t3 = t2 * t;
+
+          const x = 0.5 * ((2 * p1[0]) +
+            (-p0[0] + p2[0]) * t +
+            (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 +
+            (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3);
+
+          const y = 0.5 * ((2 * p1[1]) +
+            (-p0[1] + p2[1]) * t +
+            (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 +
+            (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3);
+
+          pathCoords.push([x, y]);
+        }
+      }
+
+      pathCoords.push(pts[pts.length - 1]);
+      return turf.lineString(pathCoords);
+    }
+
+    function syncMarkers() {
+      clearMarkers();
+
+      if (!isEditingMode) return;
+
+      const activeLine = lines.find(r => r.id === activeLineId);
+      if (activeLine && activeLine.coordinates) {
+        activeLine.coordinates.forEach((coords, idx) => {
+          const el = document.createElement('div');
+          el.className = 'custom-node-marker';
+
+          el.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            activeLine.coordinates.splice(idx, 1);
+            renderAll();
+          });
+
+          const marker = new maplibregl.Marker({ element: el, draggable: true })
+            .setLngLat(coords)
+            .addTo(map);
+
+          marker.on('dragstart', () => { isDraggingNode = true; });
+          marker.on('drag', () => {
+            const pos = marker.getLngLat();
+            activeLine.coordinates[idx] = [pos.lng, pos.lat];
+            renderAll();
+          });
+          marker.on('dragend', () => {
+            setTimeout(() => { isDraggingNode = false; }, 100);
+          });
+
+          activeMarkers.push(marker);
+        });
+      }
+
+      stations.forEach(stn => {
+        const el = document.createElement('div');
+        el.className = 'station-marker';
+        el.innerHTML = '🚉';
+        el.style.fontSize = '18px';
+
+        el.addEventListener('click', (e) => {
+          if (!isEditingMode) return;
+          e.stopPropagation();
+          activeStationId = stn.id;
+          activeLineId = null;
+          activeStationLength = stn.length;
+          activeStationRotation = stn.rotation;
+
+          document.getElementById('station-length').value = stn.length;
+          document.getElementById('station-len-val').innerText = stn.length + ' m';
+          document.getElementById('station-rotation').value = stn.rotation;
+          document.getElementById('station-rot-val').innerText = stn.rotation + '°';
+          document.getElementById('active-status').innerText = stn.name;
+          renderAll();
+        });
+
+        const marker = new maplibregl.Marker({ element: el, draggable: true })
+          .setLngLat(stn.center)
+          .addTo(map);
+
+        marker.on('dragstart', () => { isDraggingNode = true; });
+        marker.on('drag', () => {
+          const pos = marker.getLngLat();
+          stn.center = [pos.lng, pos.lat];
+          renderAll();
+        });
+        marker.on('dragend', () => {
+          setTimeout(() => { isDraggingNode = false; }, 100);
+        });
+
+        activeMarkers.push(marker);
+      });
+    }
+
+    function clearMarkers() {
+      activeMarkers.forEach(m => m.remove());
+      activeMarkers = [];
+    }
+
+    function updateRoadsListUI() {
+      const container = document.getElementById('roads-list');
+      container.innerHTML = '';
+
+      lines.forEach(lineItem => {
+        const item = document.createElement('div');
+        item.className = 'road-item' + (lineItem.id === activeLineId ? ' selected' : '');
+        item.innerHTML = `<span>${lineItem.name} ${lineItem.isDouble ? '🚆🚆' : '🚆'}</span> <button class="action-icon-btn">🗑️</button>`;
+        item.querySelector('button').addEventListener('click', (e) => {
+          e.stopPropagation();
+          lines = lines.filter(r => r.id !== lineItem.id);
+          if (activeLineId === lineItem.id) activeLineId = null;
+          renderAll();
+        });
+        item.addEventListener('click', () => {
+          if (!isEditingMode) return;
+          activeLineId = lineItem.id;
+          activeStationId = null;
+          document.getElementById('active-status').innerText = lineItem.name;
+          renderAll();
+        });
+        container.appendChild(item);
+      });
+
+      stations.forEach(stn => {
+        const item = document.createElement('div');
+        item.className = 'road-item' + (stn.id === activeStationId ? ' selected' : '');
+        item.innerHTML = `<span>🚉 ${stn.name} (${stn.rotation}°)</span> <button class="action-icon-btn">🗑️</button>`;
+        item.querySelector('button').addEventListener('click', (e) => {
+          e.stopPropagation();
+          stations = stations.filter(s => s.id !== stn.id);
+          if (activeStationId === stn.id) activeStationId = null;
+          renderAll();
+        });
+        item.addEventListener('click', () => {
+          if (!isEditingMode) return;
+          activeStationId = stn.id;
+          activeLineId = null;
+          activeStationLength = stn.length;
+          activeStationRotation = stn.rotation;
+
+          document.getElementById('station-length').value = stn.length;
+          document.getElementById('station-len-val').innerText = stn.length + ' m';
+          document.getElementById('station-rotation').value = stn.rotation;
+          document.getElementById('station-rot-val').innerText = stn.rotation + '°';
+          document.getElementById('active-status').innerText = stn.name;
+          renderAll();
+        });
+        container.appendChild(item);
+      });
+    }
+
+    function exportToKML() {
+      let kml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+      kml += `<kml xmlns="http://www.opengis.net/kml/2.2">\n`;
+      kml += `  <Document>\n`;
+      kml += `    <name>NSCR Railway Alignments</name>\n`;
+
+      lines.forEach(lineItem => {
+        if (lineItem.coordinates.length < 2) return;
+        const spline = buildCatmullRomRailwayPath(lineItem.coordinates, curveResolution);
+        if (!spline) return;
+
+        const coordsString = spline.geometry.coordinates
+          .map(c => `${c[0]},${c[1]},0`)
+          .join(' ');
+
+        kml += `    <Placemark>\n`;
+        kml += `      <name>${lineItem.name}</name>\n`;
+        kml += `      <LineString>\n`;
+        kml += `        <tessellate>1</tessellate>\n`;
+        kml += `        <coordinates>${coordsString}</coordinates>\n`;
+        kml += `      </LineString>\n`;
+        kml += `    </Placemark>\n`;
+
+        if (lineItem.isDouble) {
+          const separation = lineItem.separation !== undefined ? lineItem.separation : 12;
+          const mirrored = generateParallelOffset(spline, separation / 1000);
+          if (mirrored) {
+            const mCoordsString = mirrored.geometry.coordinates
+              .map(c => `${c[0]},${c[1]},0`)
+              .join(' ');
+
+            kml += `    <Placemark>\n`;
+            kml += `      <name>${lineItem.name} (Track 2)</name>\n`;
+            kml += `      <LineString>\n`;
+            kml += `        <tessellate>1</tessellate>\n`;
+            kml += `        <coordinates>${mCoordsString}</coordinates>\n`;
+            kml += `      </LineString>\n`;
+            kml += `    </Placemark>\n`;
+          }
+        }
+      });
+
+      stations.forEach(stn => {
+        kml += `    <Placemark>\n`;
+        kml += `      <name>${stn.name}</name>\n`;
+        kml += `      <Point>\n`;
+        kml += `        <coordinates>${stn.center[0]},${stn.center[1]},0</coordinates>\n`;
+        kml += `      </Point>\n`;
+        kml += `    </Placemark>\n`;
+      });
+
+      kml += `  </Document>\n`;
+      kml += `</kml>`;
+
+      const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `NSCR_Alignment_${Date.now()}.kml`;
+      link.click();
+    }
+
+    document.getElementById('finish-btn').addEventListener('click', finishActiveTrack);
+
+    document.getElementById('clear-btn').addEventListener('click', () => {
+      if (activeLineId) {
+        lines = lines.filter(r => r.id !== activeLineId);
+        activeLineId = null;
+        renderAll();
+      } else if (activeStationId) {
+        stations = stations.filter(s => s.id !== activeStationId);
+        activeStationId = null;
+        renderAll();
+      }
+    });
+  </script>
+</body>
+</html>

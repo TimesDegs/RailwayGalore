@@ -87,41 +87,6 @@
 
     .sub-title { font-size: 11px; color: #8b949e; }
 
-    .search-box {
-      display: flex;
-      gap: 6px;
-    }
-
-    .search-input {
-      flex-grow: 1;
-      background: rgba(0, 0, 0, 0.4);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 8px;
-      color: #f0f6fc;
-      padding: 8px 10px;
-      font-size: 11px;
-      outline: none;
-    }
-
-    .search-input:focus { 
-      border-color: #ffaa00; 
-    }
-
-    .search-btn {
-      background: rgba(255, 170, 0, 0.15);
-      border: 1px solid #ffaa00;
-      color: #ffaa00;
-      border-radius: 8px;
-      padding: 0 12px;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 11px;
-    }
-
-    .search-btn:hover { 
-      background: rgba(255, 170, 0, 0.3); 
-    }
-
     .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 
     .tool-btn {
@@ -270,6 +235,41 @@
       justify-content: center;
       user-select: none;
     }
+    
+    .search-box {
+      display: flex;
+      gap: 6px;
+    }
+
+    .search-input {
+      flex-grow: 1;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      color: #f0f6fc;
+      padding: 8px 10px;
+      font-size: 11px;
+      outline: none;
+    }
+
+    .search-input:focus { 
+      border-color: #ffaa00; 
+    }
+
+    .search-btn {
+      background: rgba(255, 170, 0, 0.15);
+      border: 1px solid #ffaa00;
+      color: #ffaa00;
+      border-radius: 8px;
+      padding: 0 12px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 11px;
+    }
+
+    .search-btn:hover { 
+      background: rgba(255, 170, 0, 0.3); 
+    }
   </style>
 </head>
 <body>
@@ -284,7 +284,7 @@
       <span class="sub-title">Exact Node-Lock Alignment</span>
     </div>
 
-    <!-- Integrated Search Box inside side panel -->
+    <!-- Integrated Search Box inside Panel -->
     <div class="search-box">
       <input type="text" id="coord-input" class="search-input" placeholder="Lat, Lng (e.g. 14.5995, 120.9842)" />
       <button id="coord-search-btn" class="search-btn">Go</button>
@@ -456,6 +456,47 @@
         renderAll();
       }
 
+      // Coordinate Search Handler
+      function handleCoordinateSearch() {
+        const input = document.getElementById('coord-input').value.trim();
+        if (!input) return;
+
+        const parts = input.split(/[\s,]+/);
+        if (parts.length >= 2) {
+          let val1 = parseFloat(parts[0]);
+          let val2 = parseFloat(parts[1]);
+
+          if (isNaN(val1) || isNaN(val2)) {
+            alert('Invalid coordinates format. Use "Lat, Lng" or "Lng, Lat".');
+            return;
+          }
+
+          let lat, lng;
+          if (Math.abs(val1) <= 90 && Math.abs(val2) <= 180) {
+            lat = val1;
+            lng = val2;
+          } else if (Math.abs(val2) <= 90 && Math.abs(val1) <= 180) {
+            lng = val1;
+            lat = val2;
+          } else {
+            alert('Coordinates out of bounds (-90 to 90 for Lat, -180 to 180 for Lng).');
+            return;
+          }
+
+          map.flyTo({ center: [lng, lat], zoom: 16 });
+
+          if (searchMarker) searchMarker.remove();
+          searchMarker = new maplibregl.Marker({ color: '#ffaa00' })
+            .setLngLat([lng, lat])
+            .addTo(map);
+        }
+      }
+
+      document.getElementById('coord-search-btn').addEventListener('click', handleCoordinateSearch);
+      document.getElementById('coord-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') handleCoordinateSearch();
+      });
+
       // Mousemove for rubberband dashed preview
       map.on('mousemove', (e) => {
         currentMousePos = [e.lngLat.lng, e.lngLat.lat];
@@ -487,53 +528,14 @@
       });
 
       window.addEventListener('keydown', (e) => {
-        if (e.target.tagName === 'INPUT') return; // Don't trigger shortcuts when typing in inputs
-        if (e.key === 'Enter') finishActiveTrack();
+        if (e.key === 'Enter' && document.activeElement.id !== 'coord-input') {
+          finishActiveTrack();
+        }
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
           e.preventDefault();
           undoLastPoint();
         }
       });
-    });
-
-    function handleCoordinateSearch() {
-      const input = document.getElementById('coord-input').value.trim();
-      if (!input) return;
-
-      const parts = input.split(/[\s,]+/);
-      if (parts.length >= 2) {
-        let val1 = parseFloat(parts[0]);
-        let val2 = parseFloat(parts[1]);
-
-        if (isNaN(val1) || isNaN(val2)) {
-          alert('Invalid coordinates format. Use "Lat, Lng" or "Lng, Lat".');
-          return;
-        }
-
-        let lat, lng;
-        if (Math.abs(val1) <= 90 && Math.abs(val2) <= 180) {
-          lat = val1;
-          lng = val2;
-        } else if (Math.abs(val2) <= 90 && Math.abs(val1) <= 180) {
-          lng = val1;
-          lat = val2;
-        } else {
-          alert('Coordinates out of bounds (-90 to 90 for Lat, -180 to 180 for Lng).');
-          return;
-        }
-
-        map.flyTo({ center: [lng, lat], zoom: 16 });
-
-        if (searchMarker) searchMarker.remove();
-        searchMarker = new maplibregl.Marker({ color: '#ffaa00' })
-          .setLngLat([lng, lat])
-          .addTo(map);
-      }
-    }
-
-    document.getElementById('coord-search-btn').addEventListener('click', handleCoordinateSearch);
-    document.getElementById('coord-input').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') handleCoordinateSearch();
     });
 
     function updateRubberband() {
@@ -899,7 +901,7 @@
           const A2_y = ((t2 - t) * p1[1] + (t - t1) * p2[1]) / (t2 - t1);
 
           const A3_x = ((t3 - t) * p2[0] + (t - t2) * p3[0]) / (t3 - t2);
-          const A3_y = ((t3 - t) * p2[1] + (t - t2) * p3[1]) / (t3 - t2);
+          const A3_y = ((t3 - t) * p2[1] + (t - t2) * p3[0]) / (t3 - t2);
 
           const B1_x = ((t2 - t) * A1_x + (t - t0) * A2_x) / (t2 - t0);
           const B1_y = ((t2 - t) * A1_y + (t - t0) * A2_y) / (t2 - t0);

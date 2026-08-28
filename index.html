@@ -22,6 +22,11 @@
 
     #map { width: 100vw; height: 100vh; }
 
+    /* Crosshair Cursor Mode */
+    #map.crosshair-mode canvas {
+      cursor: crosshair !important;
+    }
+
     #side-panel {
       position: absolute;
       top: 16px; left: 16px;
@@ -310,7 +315,7 @@
     <button id="reset-storage-btn">⚠️ Clear Saved Project Data</button>
   </div>
 
-  <div id="map"></div>
+  <div id="map" class="crosshair-mode"></div>
 
   <script>
     const STORAGE_KEY = 'nscr_route_studio_save_v1';
@@ -351,7 +356,10 @@
     let activeStationLength = 210;
     let activeStationRotation = 0;
 
+    let currentMousePos = null;
+
     map.on('load', () => {
+      // Station layers
       map.addSource('station-polygons-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addLayer({
         id: 'station-roof-layer', type: 'fill', source: 'station-polygons-source',
@@ -362,6 +370,21 @@
         paint: { 'line-color': ['get', 'lineColor'], 'line-width': ['get', 'lineWidth'] }
       });
 
+      // Semi-transparent rubberband / preview line source & layer
+      map.addSource('rubberband-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+      map.addLayer({
+        id: 'rubberband-layer',
+        type: 'line',
+        source: 'rubberband-source',
+        paint: {
+          'line-color': '#ffaa00',
+          'line-width': 2,
+          'line-dasharray': [3, 3],
+          'line-opacity': 0.65
+        }
+      });
+
+      // Track layers
       map.addSource('rail-bed-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addLayer({
         id: 'rail-bed-layer', type: 'line', source: 'rail-bed-source',
@@ -391,6 +414,17 @@
         renderAll();
       }
 
+      // Mousemove for rubberband dashed preview
+      map.on('mousemove', (e) => {
+        currentMousePos = [e.lngLat.lng, e.lngLat.lat];
+        updateRubberband();
+      });
+
+      map.on('mouseout', () => {
+        currentMousePos = null;
+        updateRubberband();
+      });
+
       map.on('click', (e) => {
         if (isDraggingNode || !isEditingMode) return;
         const clickPt = [e.lngLat.lng, e.lngLat.lat];
@@ -407,6 +441,7 @@
 
         activeLine.coordinates.push(clickPt);
         renderAll();
+        updateRubberband();
       });
 
       window.addEventListener('keydown', (e) => {
@@ -418,11 +453,29 @@
       });
     });
 
+    function updateRubberband() {
+      if (!isEditingMode || mode !== 'track' || !activeLineId || !currentMousePos) {
+        map.getSource('rubberband-source').setData({ type: 'FeatureCollection', features: [] });
+        return;
+      }
+
+      const activeLine = lines.find(r => r.id === activeLineId);
+      if (!activeLine || activeLine.coordinates.length === 0) {
+        map.getSource('rubberband-source').setData({ type: 'FeatureCollection', features: [] });
+        return;
+      }
+
+      const lastPoint = activeLine.coordinates[activeLine.coordinates.length - 1];
+      const previewLine = turf.lineString([lastPoint, currentMousePos]);
+
+      map.getSource('rubberband-source').setData({
+        type: 'FeatureCollection',
+        features: [previewLine]
+      });
+    }
+
     function saveToLocalStorage() {
-      const data = {
-        lines: lines,
-        stations: stations
-      };
+      const data = { lines: lines, stations: stations };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     }
 
@@ -458,25 +511,30 @@
       if (activeLine && activeLine.coordinates.length > 0) {
         activeLine.coordinates.pop();
         renderAll();
+        updateRubberband();
       }
     }
 
     document.getElementById('done-editing-btn').addEventListener('click', () => {
       isEditingMode = !isEditingMode;
       const btn = document.getElementById('done-editing-btn');
+      const mapEl = document.getElementById('map');
       
       if (!isEditingMode) {
         finishActiveTrack();
         btn.innerText = '✏️ Resume Editing';
         btn.style.background = '#d97706';
         document.getElementById('active-status').innerText = 'Completed Alignment View';
+        mapEl.classList.remove('crosshair-mode');
       } else {
         btn.innerText = '✔ Done Editing Alignment';
         btn.style.background = '#238636';
         document.getElementById('active-status').innerText = 'Editing Active';
+        mapEl.classList.add('crosshair-mode');
       }
       
       renderAll();
+      updateRubberband();
     });
 
     document.getElementById('main-road-btn').addEventListener('click', () => {
@@ -484,6 +542,7 @@
       document.getElementById('main-road-btn').classList.add('active');
       document.getElementById('spur-road-btn').classList.remove('active');
       document.getElementById('station-tool-btn').classList.remove('active');
+      document.getElementById('map').classList.add('crosshair-mode');
       finishActiveTrack(); startNewTrack('Main');
     });
 
@@ -492,6 +551,7 @@
       document.getElementById('spur-road-btn').classList.add('active');
       document.getElementById('main-road-btn').classList.remove('active');
       document.getElementById('station-tool-btn').classList.remove('active');
+      document.getElementById('map').classList.add('crosshair-mode');
       finishActiveTrack(); startNewTrack('Branch');
     });
 
@@ -500,8 +560,10 @@
       document.getElementById('station-tool-btn').classList.add('active');
       document.getElementById('main-road-btn').classList.remove('active');
       document.getElementById('spur-road-btn').classList.remove('active');
+      document.getElementById('map').classList.add('crosshair-mode');
       finishActiveTrack();
       document.getElementById('active-status').innerText = 'Station Mode';
+      updateRubberband();
     });
 
     document.getElementById('mirror-toggle').addEventListener('change', (e) => {
@@ -596,6 +658,7 @@
       activeLineId = newId;
       document.getElementById('active-status').innerText = `${type} Line ${typeCount}`;
       renderAll();
+      updateRubberband();
     }
 
     function finishActiveTrack() {
@@ -609,6 +672,7 @@
       }
       activeLineId = null;
       renderAll();
+      updateRubberband();
     }
 
     function renderAll() {
@@ -786,6 +850,7 @@
             e.preventDefault();
             activeLine.coordinates.splice(idx, 1);
             renderAll();
+            updateRubberband();
           });
 
           const marker = new maplibregl.Marker({ element: el, draggable: true })
@@ -797,6 +862,7 @@
             const pos = marker.getLngLat();
             activeLine.coordinates[idx] = [pos.lng, pos.lat];
             renderAll();
+            updateRubberband();
           });
           marker.on('dragend', () => {
             setTimeout(() => { isDraggingNode = false; }, 100);
@@ -826,6 +892,7 @@
           document.getElementById('station-rot-val').innerText = stn.rotation + '°';
           document.getElementById('active-status').innerText = stn.name;
           renderAll();
+          updateRubberband();
         });
 
         const marker = new maplibregl.Marker({ element: el, draggable: true })
@@ -888,6 +955,7 @@
           lines = lines.filter(r => r.id !== lineItem.id);
           if (activeLineId === lineItem.id) activeLineId = null;
           renderAll();
+          updateRubberband();
         });
 
         item.appendChild(titleBox);
@@ -899,6 +967,7 @@
           activeStationId = null;
           document.getElementById('active-status').innerText = lineItem.name;
           renderAll();
+          updateRubberband();
         });
 
         container.appendChild(item);
@@ -937,6 +1006,7 @@
           stations = stations.filter(s => s.id !== stn.id);
           if (activeStationId === stn.id) activeStationId = null;
           renderAll();
+          updateRubberband();
         });
 
         item.appendChild(titleBox);
@@ -955,6 +1025,7 @@
           document.getElementById('station-rot-val').innerText = stn.rotation + '°';
           document.getElementById('active-status').innerText = stn.name;
           renderAll();
+          updateRubberband();
         });
 
         container.appendChild(item);
@@ -1029,10 +1100,12 @@
         lines = lines.filter(r => r.id !== activeLineId);
         activeLineId = null;
         renderAll();
+        updateRubberband();
       } else if (activeStationId) {
         stations = stations.filter(s => s.id !== activeStationId);
         activeStationId = null;
         renderAll();
+        updateRubberband();
       }
     });
   </script>

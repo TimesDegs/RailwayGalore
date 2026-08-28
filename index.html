@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RailwayGalore v1.0.0</title>
+  <title>RailwayGalore v1.0.2 (Independent Segments)</title>
   
   <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
@@ -244,15 +244,15 @@
 
   <div id="side-panel">
     <div class="panel-header">
-      <h2>RAILWAYGALORE v1.0</h2>
-      <span class="sub-title">Fixed Local Alignment Engine</span>
+      <h2>RAILWAYGALORE v1.0.2</h2>
+      <span class="sub-title">Independent Segments Engine</span>
     </div>
 
     <div class="tool-grid">
       <button id="main-road-btn" class="tool-btn active">🚆 Main Line</button>
       <button id="spur-road-btn" class="tool-btn">🔀 Branch Line</button>
     </div>
-    <button id="station-tool-btn" class="tool-btn" style="width: 100%;">🚉 Place Station</button>
+    <button id="station-tool-btn" class="tool-btn" style="width: 100%;">ls Place Station</button>
 
     <div class="toggle-row">
       <span id="dual-label">Double Track</span>
@@ -288,7 +288,7 @@
 
     <div class="control-group">
       <div class="label-row">
-        <span>Curve Resolution</span>
+        <span>Segment Smoothness</span>
         <strong id="tension-val">16 pts</strong>
       </div>
       <input type="range" id="curve-tension" min="4" max="32" value="16">
@@ -356,6 +356,16 @@
     let activeStationRotation = 0;
 
     let currentMousePos = null;
+
+    function sanitizeCoord(coord) {
+      if (!Array.isArray(coord) || coord.length < 2) return null;
+      let lng = coord[0];
+      let lat = coord[1];
+      if (Math.abs(lng) <= 90 && Math.abs(lat) > 90) {
+        return [lat, lng];
+      }
+      return [lng, lat];
+    }
 
     map.on('load', () => {
       map.addSource('station-polygons-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
@@ -460,8 +470,8 @@
         return;
       }
 
-      const lastPoint = activeLine.coordinates[activeLine.coordinates.length - 1];
-      const previewLine = turf.lineString([lastPoint, currentMousePos]);
+      const lastPoint = sanitizeCoord(activeLine.coordinates[activeLine.coordinates.length - 1]);
+      const previewLine = turf.lineString([lastPoint, sanitizeCoord(currentMousePos)]);
 
       map.getSource('rubberband-source').setData({
         type: 'FeatureCollection',
@@ -479,8 +489,14 @@
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          lines = parsed.lines || [];
-          stations = parsed.stations || [];
+          lines = (parsed.lines || []).map(line => {
+            line.coordinates = line.coordinates.map(sanitizeCoord).filter(c => c !== null);
+            return line;
+          });
+          stations = (parsed.stations || []).map(stn => {
+            stn.center = sanitizeCoord(stn.center);
+            return stn;
+          });
         } catch (e) {
           console.error("Failed to load saved alignment data", e);
         }
@@ -596,6 +612,7 @@
     document.getElementById('export-kml-btn').addEventListener('click', exportToKML);
 
     function placeStation(coords) {
+      coords = sanitizeCoord(coords);
       let calcRotation = activeStationRotation;
 
       lines.forEach(lineItem => {
@@ -607,11 +624,14 @@
         const dist = turf.distance(turf.point(coords), snapped, { units: 'meters' });
 
         if (dist < 80) {
-          coords = snapped.geometry.coordinates;
+          coords = sanitizeCoord(snapped.geometry.coordinates);
           const index = snapped.properties.index;
           const splineCoords = spline.geometry.coordinates;
           if (splineCoords[index + 1]) {
-            calcRotation = turf.bearing(splineCoords[index], splineCoords[index + 1]);
+            calcRotation = turf.bearing(
+              turf.point(sanitizeCoord(splineCoords[index])), 
+              turf.point(sanitizeCoord(splineCoords[index + 1]))
+            );
           }
         }
       });
@@ -680,22 +700,23 @@
       const polygonFeatures = [];
 
       stations.forEach(stn => {
+        const center = sanitizeCoord(stn.center);
         const rot = stn.rotation;
         const lenM = stn.length;
         
-        const mainRoof = createMeterBox(stn.center, 28, lenM, rot);
+        const mainRoof = createMeterBox(center, 28, lenM, rot);
         if (mainRoof) {
           mainRoof.properties = { color: '#00bcd4', opacity: 0.6, lineColor: '#00e5ff', lineWidth: 2 };
           polygonFeatures.push(mainRoof);
         }
 
-        const platformL = createOffsetMeterBox(stn.center, -16, 5, lenM * 0.9, rot);
+        const platformL = createOffsetMeterBox(center, -16, 5, lenM * 0.9, rot);
         if (platformL) {
           platformL.properties = { color: '#ffaa00', opacity: 0.85, lineColor: '#ffcc00', lineWidth: 1 };
           polygonFeatures.push(platformL);
         }
 
-        const platformR = createOffsetMeterBox(stn.center, 16, 5, lenM * 0.9, rot);
+        const platformR = createOffsetMeterBox(center, 16, 5, lenM * 0.9, rot);
         if (platformR) {
           platformR.properties = { color: '#ffaa00', opacity: 0.85, lineColor: '#ffcc00', lineWidth: 1 };
           polygonFeatures.push(platformR);
@@ -707,6 +728,7 @@
 
     function createMeterBox(center, widthM, lengthM, rotationDeg) {
       try {
+        center = sanitizeCoord(center);
         const centerPt = turf.point(center);
         const halfWidthKm = (widthM / 2) / 1000;
         const halfLengthKm = (lengthM / 2) / 1000;
@@ -714,10 +736,10 @@
         const p1 = turf.destination(centerPt, halfLengthKm, rotationDeg, { units: 'kilometers' });
         const p2 = turf.destination(centerPt, halfLengthKm, (rotationDeg + 180) % 360, { units: 'kilometers' });
 
-        const c1 = turf.destination(p1, halfWidthKm, (rotationDeg + 90) % 360, { units: 'kilometers' }).geometry.coordinates;
-        const c2 = turf.destination(p1, halfWidthKm, (rotationDeg - 90 + 360) % 360, { units: 'kilometers' }).geometry.coordinates;
-        const c3 = turf.destination(p2, halfWidthKm, (rotationDeg - 90 + 360) % 360, { units: 'kilometers' }).geometry.coordinates;
-        const c4 = turf.destination(p2, halfWidthKm, (rotationDeg + 90) % 360, { units: 'kilometers' }).geometry.coordinates;
+        const c1 = sanitizeCoord(turf.destination(p1, halfWidthKm, (rotationDeg + 90) % 360, { units: 'kilometers' }).geometry.coordinates);
+        const c2 = sanitizeCoord(turf.destination(p1, halfWidthKm, (rotationDeg - 90 + 360) % 360, { units: 'kilometers' }).geometry.coordinates);
+        const c3 = sanitizeCoord(turf.destination(p2, halfWidthKm, (rotationDeg - 90 + 360) % 360, { units: 'kilometers' }).geometry.coordinates);
+        const c4 = sanitizeCoord(turf.destination(p2, halfWidthKm, (rotationDeg + 90) % 360, { units: 'kilometers' }).geometry.coordinates);
 
         return turf.polygon([[c1, c2, c3, c4, c1]]);
       } catch (e) {
@@ -727,7 +749,10 @@
 
     function createOffsetMeterBox(center, offsetX, widthM, lengthM, rotationDeg) {
       try {
-        const shiftedCenter = turf.destination(turf.point(center), Math.abs(offsetX) / 1000, rotationDeg + (offsetX >= 0 ? 90 : -90), { units: 'kilometers' }).geometry.coordinates;
+        center = sanitizeCoord(center);
+        const shiftedCenter = sanitizeCoord(
+          turf.destination(turf.point(center), Math.abs(offsetX) / 1000, rotationDeg + (offsetX >= 0 ? 90 : -90), { units: 'kilometers' }).geometry.coordinates
+        );
         return createMeterBox(shiftedCenter, widthM, lengthM, rotationDeg);
       } catch (e) {
         return null;
@@ -761,14 +786,18 @@
 
     function generateParallelOffset(splineFeature, offsetKm) {
       try {
-        return turf.lineOffset(splineFeature, offsetKm, { units: 'kilometers' });
+        const offsetResult = turf.lineOffset(splineFeature, offsetKm, { units: 'kilometers' });
+        offsetResult.geometry.coordinates = offsetResult.geometry.coordinates.map(sanitizeCoord);
+        return offsetResult;
       } catch (e) {
         return null;
       }
     }
 
-    // FIXED: Segment-local Catmull-Rom generation prevents past curves from shifting when adding new points
-    function buildCatmullRomRailwayPath(pts, samplesPerSegment = 16) {
+    // INDEPENDENT SEGMENT INTERPOLATION ENGINE
+    // Interpolates each pair [P_i, P_{i+1}] independently without cascading math
+    function buildCatmullRomRailwayPath(rawPts, samplesPerSegment = 16) {
+      const pts = rawPts.map(sanitizeCoord).filter(p => p !== null);
       if (pts.length < 2) return null;
       if (pts.length === 2) return turf.lineString(pts);
 
@@ -778,55 +807,40 @@
         const p1 = pts[i];
         const p2 = pts[i + 1];
 
-        // Determine local control tangents (P0 and P3) without affecting distant curves
-        const p0 = (i === 0) 
-          ? [2 * p1[0] - p2[0], 2 * p1[1] - p2[1]] 
-          : pts[i - 1];
+        // Isolated local tangents calculated only from immediate neighbors
+        let t1x, t1y, t2x, t2y;
 
-        const p3 = (i === pts.length - 2) 
-          ? [2 * p2[0] - p1[0], 2 * p2[1] - p1[1]] 
-          : pts[i + 2];
-
-        const alpha = 0.5;
-
-        function getT(t, pA, pB) {
-          const dx = pB[0] - pA[0];
-          const dy = pB[1] - pA[1];
-          return t + Math.pow(dx * dx + dy * dy, alpha / 2);
+        if (i === 0) {
+          t1x = p2[0] - p1[0];
+          t1y = p2[1] - p1[1];
+        } else {
+          t1x = (p2[0] - pts[i - 1][0]) * 0.5;
+          t1y = (p2[1] - pts[i - 1][1]) * 0.5;
         }
 
-        const t0 = 0;
-        const t1 = getT(t0, p0, p1);
-        const t2 = getT(t1, p1, p2);
-        const t3 = getT(t2, p2, p3);
-
-        if (t1 === t0 || t2 === t1 || t3 === t2) {
-          pathCoords.push(p1);
-          continue;
+        if (i === pts.length - 2) {
+          t2x = p2[0] - p1[0];
+          t2y = p2[1] - p1[1];
+        } else {
+          t2x = (pts[i + 2][0] - p1[0]) * 0.5;
+          t2y = (pts[i + 2][1] - p1[1]) * 0.5;
         }
 
+        // Cubic Hermite Interpolation over the local [0, 1] segment interval
         for (let step = 0; step < samplesPerSegment; step++) {
-          const t = t1 + (step / samplesPerSegment) * (t2 - t1);
+          const t = step / samplesPerSegment;
+          const t2 = t * t;
+          const t3 = t2 * t;
 
-          const A1_x = ((t1 - t) * p0[0] + (t - t0) * p1[0]) / (t1 - t0);
-          const A1_y = ((t1 - t) * p0[1] + (t - t0) * p1[1]) / (t1 - t0);
+          const h1 = 2 * t3 - 3 * t2 + 1;
+          const h2 = -2 * t3 + 3 * t2;
+          const h3 = t3 - 2 * t2 + t;
+          const h4 = t3 - t2;
 
-          const A2_x = ((t2 - t) * p1[0] + (t - t1) * p2[0]) / (t2 - t1);
-          const A2_y = ((t2 - t) * p1[1] + (t - t1) * p2[0]) / (t2 - t1);
+          const x = h1 * p1[0] + h2 * p2[0] + h3 * t1x + h4 * t2x;
+          const y = h1 * p1[1] + h2 * p2[1] + h3 * t1y + h4 * t2y;
 
-          const A3_x = ((t3 - t) * p2[0] + (t - t2) * p3[0]) / (t3 - t2);
-          const A3_y = ((t3 - t) * p2[1] + (t - t2) * p3[1]) / (t3 - t2);
-
-          const B1_x = ((t2 - t) * A1_x + (t - t0) * A2_x) / (t2 - t0);
-          const B1_y = ((t2 - t) * A1_y + (t - t0) * A2_y) / (t2 - t0);
-
-          const B2_x = ((t3 - t) * A2_x + (t - t1) * A3_x) / (t3 - t1);
-          const B2_y = ((t3 - t) * A2_y + (t - t1) * A3_y) / (t3 - t1);
-
-          const C_x = ((t2 - t) * B1_x + (t - t1) * B2_x) / (t2 - t1);
-          const C_y = ((t2 - t) * B1_y + (t - t1) * B2_y) / (t2 - t1);
-
-          pathCoords.push([C_x, C_y]);
+          pathCoords.push(sanitizeCoord([x, y]));
         }
       }
 
@@ -841,7 +855,8 @@
 
       const activeLine = lines.find(r => r.id === activeLineId);
       if (activeLine && activeLine.coordinates) {
-        activeLine.coordinates.forEach((coords, idx) => {
+        activeLine.coordinates.forEach((rawCoords, idx) => {
+          const coords = sanitizeCoord(rawCoords);
           const el = document.createElement('div');
           el.className = 'custom-node-marker';
 
@@ -859,7 +874,7 @@
           marker.on('dragstart', () => { isDraggingNode = true; });
           marker.on('drag', () => {
             const pos = marker.getLngLat();
-            activeLine.coordinates[idx] = [pos.lng, pos.lat];
+            activeLine.coordinates[idx] = sanitizeCoord([pos.lng, pos.lat]);
             renderAll();
             updateRubberband();
           });
@@ -872,9 +887,10 @@
       }
 
       stations.forEach(stn => {
+        const center = sanitizeCoord(stn.center);
         const el = document.createElement('div');
         el.className = 'station-marker';
-        el.innerHTML = '🚉';
+        el.innerHTML = 'ls';
         el.style.fontSize = '18px';
 
         el.addEventListener('click', (e) => {
@@ -895,13 +911,13 @@
         });
 
         const marker = new maplibregl.Marker({ element: el, draggable: true })
-          .setLngLat(stn.center)
+          .setLngLat(center)
           .addTo(map);
 
         marker.on('dragstart', () => { isDraggingNode = true; });
         marker.on('drag', () => {
           const pos = marker.getLngLat();
-          stn.center = [pos.lng, pos.lat];
+          stn.center = sanitizeCoord([pos.lng, pos.lat]);
           renderAll();
         });
         marker.on('dragend', () => {
@@ -994,7 +1010,7 @@
           saveToLocalStorage();
         });
 
-        titleBox.appendChild(document.createTextNode('🚉 '));
+        titleBox.appendChild(document.createTextNode('ls '));
         titleBox.appendChild(nameInput);
 
         const deleteBtn = document.createElement('button');
@@ -1074,10 +1090,11 @@
       });
 
       stations.forEach(stn => {
+        const center = sanitizeCoord(stn.center);
         kml += `    <Placemark>\n`;
         kml += `      <name>${stn.name}</name>\n`;
         kml += `      <Point>\n`;
-        kml += `        <coordinates>${stn.center[0]},${stn.center[1]},0</coordinates>\n`;
+        kml += `        <coordinates>${center[0]},${center[1]},0</coordinates>\n`;
         kml += `      </Point>\n`;
         kml += `    </Placemark>\n`;
       });

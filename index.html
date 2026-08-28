@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Railway Route Alignment Studio</title>
+  <title>RailwayGalore v1.0.0</title>
   
   <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
@@ -22,7 +22,6 @@
 
     #map { width: 100vw; height: 100vh; }
 
-    /* Crosshair Cursor Mode */
     #map.crosshair-mode canvas {
       cursor: crosshair !important;
     }
@@ -245,8 +244,8 @@
 
   <div id="side-panel">
     <div class="panel-header">
-      <h2>NSCR ROUTE STUDIO</h2>
-      <span class="sub-title">Exact Node-Lock Alignment</span>
+      <h2>RAILWAYGALORE v1.0</h2>
+      <span class="sub-title">Fixed Local Alignment Engine</span>
     </div>
 
     <div class="tool-grid">
@@ -318,7 +317,7 @@
   <div id="map" class="crosshair-mode"></div>
 
   <script>
-    const STORAGE_KEY = 'nscr_route_studio_save_v1';
+    const STORAGE_KEY = 'railway_galore_v1_save';
 
     const map = new maplibregl.Map({
       container: 'map',
@@ -359,7 +358,6 @@
     let currentMousePos = null;
 
     map.on('load', () => {
-      // Station layers
       map.addSource('station-polygons-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addLayer({
         id: 'station-roof-layer', type: 'fill', source: 'station-polygons-source',
@@ -370,7 +368,6 @@
         paint: { 'line-color': ['get', 'lineColor'], 'line-width': ['get', 'lineWidth'] }
       });
 
-      // Semi-transparent rubberband / preview line source & layer
       map.addSource('rubberband-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addLayer({
         id: 'rubberband-layer',
@@ -384,7 +381,6 @@
         }
       });
 
-      // Track layers
       map.addSource('rail-bed-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addLayer({
         id: 'rail-bed-layer', type: 'line', source: 'rail-bed-source',
@@ -414,7 +410,6 @@
         renderAll();
       }
 
-      // Mousemove for rubberband dashed preview
       map.on('mousemove', (e) => {
         currentMousePos = [e.lngLat.lng, e.lngLat.lat];
         updateRubberband();
@@ -772,23 +767,27 @@
       }
     }
 
+    // FIXED: Segment-local Catmull-Rom generation prevents past curves from shifting when adding new points
     function buildCatmullRomRailwayPath(pts, samplesPerSegment = 16) {
       if (pts.length < 2) return null;
       if (pts.length === 2) return turf.lineString(pts);
 
-      const p0_ext = [2 * pts[0][0] - pts[1][0], 2 * pts[0][1] - pts[1][1]];
-      const pN_ext = [2 * pts[pts.length - 1][0] - pts[pts.length - 2][0], 2 * pts[pts.length - 1][1] - pts[pts.length - 2][1]];
-
-      const fullPts = [p0_ext, ...pts, pN_ext];
       const pathCoords = [];
 
-      const alpha = 0.5;
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p1 = pts[i];
+        const p2 = pts[i + 1];
 
-      for (let i = 0; i < fullPts.length - 3; i++) {
-        const p0 = fullPts[i];
-        const p1 = fullPts[i + 1];
-        const p2 = fullPts[i + 2];
-        const p3 = fullPts[i + 3];
+        // Determine local control tangents (P0 and P3) without affecting distant curves
+        const p0 = (i === 0) 
+          ? [2 * p1[0] - p2[0], 2 * p1[1] - p2[1]] 
+          : pts[i - 1];
+
+        const p3 = (i === pts.length - 2) 
+          ? [2 * p2[0] - p1[0], 2 * p2[1] - p1[1]] 
+          : pts[i + 2];
+
+        const alpha = 0.5;
 
         function getT(t, pA, pB) {
           const dx = pB[0] - pA[0];
@@ -813,7 +812,7 @@
           const A1_y = ((t1 - t) * p0[1] + (t - t0) * p1[1]) / (t1 - t0);
 
           const A2_x = ((t2 - t) * p1[0] + (t - t1) * p2[0]) / (t2 - t1);
-          const A2_y = ((t2 - t) * p1[1] + (t - t1) * p2[1]) / (t2 - t1);
+          const A2_y = ((t2 - t) * p1[1] + (t - t1) * p2[0]) / (t2 - t1);
 
           const A3_x = ((t3 - t) * p2[0] + (t - t2) * p3[0]) / (t3 - t2);
           const A3_y = ((t3 - t) * p2[1] + (t - t2) * p3[1]) / (t3 - t2);
@@ -1036,7 +1035,7 @@
       let kml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
       kml += `<kml xmlns="http://www.opengis.net/kml/2.2">\n`;
       kml += `  <Document>\n`;
-      kml += `    <name>NSCR Railway Alignments</name>\n`;
+      kml += `    <name>RailwayGalore Alignments</name>\n`;
 
       lines.forEach(lineItem => {
         if (lineItem.coordinates.length < 2) return;
@@ -1089,7 +1088,7 @@
       const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = `NSCR_Alignment_${Date.now()}.kml`;
+      link.download = `RailwayGalore_Export_${Date.now()}.kml`;
       link.click();
     }
 

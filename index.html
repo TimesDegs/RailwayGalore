@@ -42,7 +42,6 @@
       overflow-y: auto;
     }
 
-    /* Top Right Floating Toolbar */
     #top-right-toolbar {
       position: absolute;
       top: 16px;
@@ -171,23 +170,46 @@
     .finished-list-section { display: flex; flex-direction: column; gap: 6px; }
     .finished-list-section label { font-size: 11px; color: #c9d1d9; }
 
-    .roads-list { max-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+    .roads-list { max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
     .road-item {
       display: flex; justify-content: space-between; align-items: center;
       background: rgba(255, 255, 255, 0.05); padding: 6px 10px;
       border-radius: 6px; font-size: 11px; cursor: pointer;
-      border: 1px solid transparent;
+      border: 1px solid transparent; gap: 6px;
     }
     .road-item.selected { border: 1px solid #ffaa00; background: rgba(255, 170, 0, 0.1); }
 
+    .item-title-container { display: flex; align-items: center; gap: 6px; flex-grow: 1; min-width: 0; }
+    
+    .rename-input {
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #f0f6fc;
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 11px;
+      width: 100%;
+      outline: none;
+    }
+    .rename-input:focus { border-color: #ffaa00; }
+
     .action-icon-btn { background: none; border: none; color: #8b949e; cursor: pointer; font-size: 11px; }
+    .action-icon-btn:hover { color: #ff453a; }
 
     #clear-btn {
-      margin-top: auto; padding: 8px;
+      padding: 8px;
       background: rgba(255, 59, 48, 0.15); color: #ff453a;
       border: 1px solid rgba(255, 59, 48, 0.3);
       border-radius: 8px; cursor: pointer;
       font-weight: 600; font-size: 11px;
+    }
+
+    #reset-storage-btn {
+      padding: 6px;
+      background: transparent; color: #8b949e;
+      border: none; cursor: pointer;
+      font-size: 10px; text-decoration: underline;
+      align-self: center;
     }
 
     .custom-node-marker {
@@ -212,7 +234,6 @@
 </head>
 <body>
 
-  <!-- Floating Control Button Top Right -->
   <div id="top-right-toolbar">
     <button id="undo-point-btn" class="top-action-btn" title="Undo Last Point (Ctrl+Z)">↩ Undo Point</button>
   </div>
@@ -286,11 +307,14 @@
     </div>
 
     <button id="clear-btn">Delete Selected Element</button>
+    <button id="reset-storage-btn">⚠️ Clear Saved Project Data</button>
   </div>
 
   <div id="map"></div>
 
   <script>
+    const STORAGE_KEY = 'nscr_route_studio_save_v1';
+
     const map = new maplibregl.Map({
       container: 'map',
       style: {
@@ -359,7 +383,13 @@
         paint: { 'line-color': '#f0f6fc', 'line-width': 2, 'line-gap-width': 3 }
       });
 
-      startNewTrack('Main');
+      loadFromLocalStorage();
+
+      if (lines.length === 0) {
+        startNewTrack('Main');
+      } else {
+        renderAll();
+      }
 
       map.on('click', (e) => {
         if (isDraggingNode || !isEditingMode) return;
@@ -386,6 +416,38 @@
           undoLastPoint();
         }
       });
+    });
+
+    function saveToLocalStorage() {
+      const data = {
+        lines: lines,
+        stations: stations
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    function loadFromLocalStorage() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          lines = parsed.lines || [];
+          stations = parsed.stations || [];
+        } catch (e) {
+          console.error("Failed to load saved alignment data", e);
+        }
+      }
+    }
+
+    document.getElementById('reset-storage-btn').addEventListener('click', () => {
+      if (confirm("Are you sure you want to clear all saved lines and stations?")) {
+        localStorage.removeItem(STORAGE_KEY);
+        lines = [];
+        stations = [];
+        activeLineId = null;
+        activeStationId = null;
+        startNewTrack('Main');
+      }
     });
 
     document.getElementById('undo-point-btn').addEventListener('click', undoLastPoint);
@@ -552,6 +614,7 @@
     function renderAll() {
       renderStations();
       renderTracks();
+      saveToLocalStorage();
     }
 
     function renderStations() {
@@ -645,19 +708,17 @@
       }
     }
 
-    // Centripetal Catmull-Rom Spline implementation (eliminates loops, sharp inward kinks, and overshoots)
     function buildCatmullRomRailwayPath(pts, samplesPerSegment = 16) {
       if (pts.length < 2) return null;
       if (pts.length === 2) return turf.lineString(pts);
 
-      // Virtual extended endpoints for smooth start/end tangents
       const p0_ext = [2 * pts[0][0] - pts[1][0], 2 * pts[0][1] - pts[1][1]];
       const pN_ext = [2 * pts[pts.length - 1][0] - pts[pts.length - 2][0], 2 * pts[pts.length - 1][1] - pts[pts.length - 2][1]];
 
       const fullPts = [p0_ext, ...pts, pN_ext];
       const pathCoords = [];
 
-      const alpha = 0.5; // Centripetal parameterization prevents cusps & loops
+      const alpha = 0.5;
 
       for (let i = 0; i < fullPts.length - 3; i++) {
         const p0 = fullPts[i];
@@ -715,7 +776,6 @@
 
       if (!isEditingMode) return;
 
-      // Only render draggable node markers for the currently ACTIVE line so finished lines remain locked
       const activeLine = lines.find(r => r.id === activeLineId);
       if (activeLine && activeLine.coordinates) {
         activeLine.coordinates.forEach((coords, idx) => {
@@ -798,13 +858,41 @@
       lines.forEach(lineItem => {
         const item = document.createElement('div');
         item.className = 'road-item' + (lineItem.id === activeLineId ? ' selected' : '');
-        item.innerHTML = `<span>${lineItem.name} ${lineItem.isDouble ? '🚆🚆' : '🚆'}</span> <button class="action-icon-btn">🗑️</button>`;
-        item.querySelector('button').addEventListener('click', (e) => {
+
+        const titleBox = document.createElement('div');
+        titleBox.className = 'item-title-container';
+
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.className = 'rename-input';
+        nameInput.value = lineItem.name;
+        nameInput.title = 'Click to rename';
+
+        nameInput.addEventListener('click', (e) => e.stopPropagation());
+        nameInput.addEventListener('change', (e) => {
+          lineItem.name = e.target.value.trim() || 'Untitled Line';
+          if (activeLineId === lineItem.id) {
+            document.getElementById('active-status').innerText = lineItem.name;
+          }
+          saveToLocalStorage();
+        });
+
+        titleBox.appendChild(document.createTextNode(lineItem.isDouble ? '🚆🚆 ' : '🚆 '));
+        titleBox.appendChild(nameInput);
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'action-icon-btn';
+        deleteBtn.innerText = '🗑️';
+        deleteBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           lines = lines.filter(r => r.id !== lineItem.id);
           if (activeLineId === lineItem.id) activeLineId = null;
           renderAll();
         });
+
+        item.appendChild(titleBox);
+        item.appendChild(deleteBtn);
+
         item.addEventListener('click', () => {
           if (!isEditingMode) return;
           activeLineId = lineItem.id;
@@ -812,19 +900,48 @@
           document.getElementById('active-status').innerText = lineItem.name;
           renderAll();
         });
+
         container.appendChild(item);
       });
 
       stations.forEach(stn => {
         const item = document.createElement('div');
         item.className = 'road-item' + (stn.id === activeStationId ? ' selected' : '');
-        item.innerHTML = `<span>🚉 ${stn.name} (${stn.rotation}°)</span> <button class="action-icon-btn">🗑️</button>`;
-        item.querySelector('button').addEventListener('click', (e) => {
+
+        const titleBox = document.createElement('div');
+        titleBox.className = 'item-title-container';
+
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.className = 'rename-input';
+        nameInput.value = stn.name;
+        nameInput.title = 'Click to rename';
+
+        nameInput.addEventListener('click', (e) => e.stopPropagation());
+        nameInput.addEventListener('change', (e) => {
+          stn.name = e.target.value.trim() || 'Untitled Station';
+          if (activeStationId === stn.id) {
+            document.getElementById('active-status').innerText = stn.name;
+          }
+          saveToLocalStorage();
+        });
+
+        titleBox.appendChild(document.createTextNode('🚉 '));
+        titleBox.appendChild(nameInput);
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'action-icon-btn';
+        deleteBtn.innerText = '🗑️';
+        deleteBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           stations = stations.filter(s => s.id !== stn.id);
           if (activeStationId === stn.id) activeStationId = null;
           renderAll();
         });
+
+        item.appendChild(titleBox);
+        item.appendChild(deleteBtn);
+
         item.addEventListener('click', () => {
           if (!isEditingMode) return;
           activeStationId = stn.id;
@@ -839,6 +956,7 @@
           document.getElementById('active-status').innerText = stn.name;
           renderAll();
         });
+
         container.appendChild(item);
       });
     }

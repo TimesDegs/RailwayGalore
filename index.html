@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RailwayGalore v1.0.4 (Independent Curves)</title>
+  <title>Railway Route Alignment Studio</title>
   
   <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
@@ -22,6 +22,7 @@
 
     #map { width: 100vw; height: 100vh; }
 
+    /* Crosshair Cursor Mode */
     #map.crosshair-mode canvas {
       cursor: crosshair !important;
     }
@@ -48,51 +49,68 @@
 
     #top-right-toolbar {
       position: absolute;
-      top: 16px; right: 50px;
-      z-index: 100; display: flex; gap: 8px;
+      top: 16px;
+      right: 50px;
+      z-index: 100;
+      display: flex;
+      gap: 8px;
     }
 
     .top-action-btn {
       background: rgba(13, 17, 23, 0.90);
       border: 1px solid rgba(255, 255, 255, 0.2);
-      color: #f0f6fc; padding: 8px 14px;
-      border-radius: 8px; font-size: 12px; font-weight: 600;
-      cursor: pointer; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-      backdrop-filter: blur(10px); transition: all 0.2s ease;
-      display: flex; align-items: center; gap: 6px;
+      color: #f0f6fc;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(10px);
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
     .top-action-btn:hover {
       background: rgba(255, 170, 0, 0.2);
-      border-color: #ffaa00; color: #ffaa00;
+      border-color: #ffaa00;
+      color: #ffaa00;
     }
 
     .panel-header h2 {
       font-size: 15px; font-weight: 700;
-      letter-spacing: 1px; margin: 0; color: #ffaa00;
+      letter-spacing: 1px; margin: 0;
+      color: #ffaa00;
     }
 
     .sub-title { font-size: 11px; color: #8b949e; }
+
     .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 
     .tool-btn {
       padding: 8px;
       background: rgba(255, 255, 255, 0.05);
-      color: #c9d1d9; border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 8px; cursor: pointer;
+      color: #c9d1d9;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      cursor: pointer;
       font-weight: 600; font-size: 11px;
       display: flex; align-items: center; justify-content: center; gap: 6px;
     }
 
     .tool-btn.active {
       background: rgba(255, 170, 0, 0.2);
-      color: #ffaa00; border-color: #ffaa00;
+      color: #ffaa00;
+      border-color: #ffaa00;
     }
 
     .toggle-row {
       display: flex; justify-content: space-between; align-items: center;
-      background: rgba(255, 255, 255, 0.03); padding: 8px 12px;
-      border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.03);
+      padding: 8px 12px; border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
       font-size: 11px;
     }
 
@@ -118,28 +136,36 @@
     input[type="range"] { width: 100%; accent-color: #ffaa00; cursor: pointer; }
 
     .primary-btn {
-      width: 100%; padding: 10px; background: #d97706; color: #ffffff;
-      border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px;
-      cursor: pointer; font-weight: 600; font-size: 12px;
+      width: 100%; padding: 10px;
+      background: #d97706; color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px; cursor: pointer;
+      font-weight: 600; font-size: 12px;
     }
 
     .done-btn {
-      width: 100%; padding: 10px; background: #238636; color: #ffffff;
-      border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px;
-      cursor: pointer; font-weight: 600; font-size: 12px;
+      width: 100%; padding: 10px;
+      background: #238636; color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px; cursor: pointer;
+      font-weight: 600; font-size: 12px;
     }
 
     .kml-btn {
-      width: 100%; padding: 10px; background: #1f6beb; color: #ffffff;
-      border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px;
-      cursor: pointer; font-weight: 600; font-size: 12px;
+      width: 100%; padding: 10px;
+      background: #1f6beb; color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px; cursor: pointer;
+      font-weight: 600; font-size: 12px;
       display: flex; align-items: center; justify-content: center; gap: 6px;
     }
 
     .stats-card {
-      background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 8px; padding: 10px; display: flex; flex-direction: column;
-      gap: 4px; font-size: 11px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px; padding: 10px;
+      display: flex; flex-direction: column; gap: 4px;
+      font-size: 11px;
     }
 
     .stat-row { display: flex; justify-content: space-between; align-items: center; }
@@ -161,9 +187,14 @@
     .item-title-container { display: flex; align-items: center; gap: 6px; flex-grow: 1; min-width: 0; }
     
     .rename-input {
-      background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.2);
-      color: #f0f6fc; border-radius: 4px; padding: 2px 6px;
-      font-size: 11px; width: 100%; outline: none;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #f0f6fc;
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 11px;
+      width: 100%;
+      outline: none;
     }
     .rename-input:focus { border-color: #ffaa00; }
 
@@ -171,26 +202,38 @@
     .action-icon-btn:hover { color: #ff453a; }
 
     #clear-btn {
-      padding: 8px; background: rgba(255, 59, 48, 0.15); color: #ff453a;
-      border: 1px solid rgba(255, 59, 48, 0.3); border-radius: 8px;
-      cursor: pointer; font-weight: 600; font-size: 11px;
+      padding: 8px;
+      background: rgba(255, 59, 48, 0.15); color: #ff453a;
+      border: 1px solid rgba(255, 59, 48, 0.3);
+      border-radius: 8px; cursor: pointer;
+      font-weight: 600; font-size: 11px;
     }
 
     #reset-storage-btn {
-      padding: 6px; background: transparent; color: #8b949e;
-      border: none; cursor: pointer; font-size: 10px; text-decoration: underline;
+      padding: 6px;
+      background: transparent; color: #8b949e;
+      border: none; cursor: pointer;
+      font-size: 10px; text-decoration: underline;
       align-self: center;
     }
 
     .custom-node-marker {
-      width: 12px; height: 12px; background: #ffffff;
-      border: 2px solid #d97706; border-radius: 50%; cursor: grab;
-      box-shadow: 0 0 6px rgba(0,0,0,0.8); pointer-events: auto !important;
+      width: 12px; height: 12px;
+      background: #ffffff;
+      border: 2px solid #d97706;
+      border-radius: 50%;
+      cursor: grab;
+      box-shadow: 0 0 6px rgba(0,0,0,0.8);
+      pointer-events: auto !important;
     }
 
     .station-marker {
-      cursor: grab; pointer-events: auto !important;
-      display: flex; align-items: center; justify-content: center; user-select: none;
+      cursor: grab;
+      pointer-events: auto !important;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
     }
   </style>
 </head>
@@ -202,15 +245,15 @@
 
   <div id="side-panel">
     <div class="panel-header">
-      <h2>RAILWAYGALORE v1.0.4</h2>
-      <span class="sub-title">Isolated Curved Segments</span>
+      <h2>NSCR ROUTE STUDIO</h2>
+      <span class="sub-title">Exact Node-Lock Alignment</span>
     </div>
 
     <div class="tool-grid">
       <button id="main-road-btn" class="tool-btn active">🚆 Main Line</button>
       <button id="spur-road-btn" class="tool-btn">🔀 Branch Line</button>
     </div>
-    <button id="station-tool-btn" class="tool-btn" style="width: 100%;">ls Place Station</button>
+    <button id="station-tool-btn" class="tool-btn" style="width: 100%;">🚉 Place Station</button>
 
     <div class="toggle-row">
       <span id="dual-label">Double Track</span>
@@ -230,14 +273,6 @@
 
     <div class="control-group">
       <div class="label-row">
-        <span>Curvature / Smoothness</span>
-        <strong id="curvature-val">0.35</strong>
-      </div>
-      <input type="range" id="curvature-intensity" min="0" max="80" value="35">
-    </div>
-
-    <div class="control-group">
-      <div class="label-row">
         <span>Station Length</span>
         <strong id="station-len-val">210 m</strong>
       </div>
@@ -250,6 +285,14 @@
         <strong id="station-rot-val">0°</strong>
       </div>
       <input type="range" id="station-rotation" min="0" max="359" value="0">
+    </div>
+
+    <div class="control-group">
+      <div class="label-row">
+        <span>Curve Resolution</span>
+        <strong id="tension-val">16 pts</strong>
+      </div>
+      <input type="range" id="curve-tension" min="4" max="32" value="16">
     </div>
 
     <button id="finish-btn" class="primary-btn">Finish Segment [Enter]</button>
@@ -275,7 +318,7 @@
   <div id="map" class="crosshair-mode"></div>
 
   <script>
-    const STORAGE_KEY = 'railway_galore_v1_save';
+    const STORAGE_KEY = 'nscr_route_studio_save_v1';
 
     const map = new maplibregl.Map({
       container: 'map',
@@ -307,25 +350,16 @@
     let isDraggingNode = false;
 
     let isBranchMode = false;
+    let curveResolution = 16;
     let isEditingMode = true;
-    let curvatureFactor = 0.35;
 
     let activeStationLength = 210;
     let activeStationRotation = 0;
 
     let currentMousePos = null;
 
-    function sanitizeCoord(coord) {
-      if (!Array.isArray(coord) || coord.length < 2) return null;
-      let lng = coord[0];
-      let lat = coord[1];
-      if (Math.abs(lng) <= 90 && Math.abs(lat) > 90) {
-        return [lat, lng];
-      }
-      return [lng, lat];
-    }
-
     map.on('load', () => {
+      // Station layers
       map.addSource('station-polygons-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addLayer({
         id: 'station-roof-layer', type: 'fill', source: 'station-polygons-source',
@@ -336,6 +370,7 @@
         paint: { 'line-color': ['get', 'lineColor'], 'line-width': ['get', 'lineWidth'] }
       });
 
+      // Semi-transparent rubberband / preview line source & layer
       map.addSource('rubberband-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addLayer({
         id: 'rubberband-layer',
@@ -349,6 +384,7 @@
         }
       });
 
+      // Track layers
       map.addSource('rail-bed-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addLayer({
         id: 'rail-bed-layer', type: 'line', source: 'rail-bed-source',
@@ -378,6 +414,7 @@
         renderAll();
       }
 
+      // Mousemove for rubberband dashed preview
       map.on('mousemove', (e) => {
         currentMousePos = [e.lngLat.lng, e.lngLat.lat];
         updateRubberband();
@@ -428,8 +465,8 @@
         return;
       }
 
-      const lastPoint = sanitizeCoord(activeLine.coordinates[activeLine.coordinates.length - 1]);
-      const previewLine = turf.lineString([lastPoint, sanitizeCoord(currentMousePos)]);
+      const lastPoint = activeLine.coordinates[activeLine.coordinates.length - 1];
+      const previewLine = turf.lineString([lastPoint, currentMousePos]);
 
       map.getSource('rubberband-source').setData({
         type: 'FeatureCollection',
@@ -447,14 +484,8 @@
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          lines = (parsed.lines || []).map(line => {
-            line.coordinates = line.coordinates.map(sanitizeCoord).filter(c => c !== null);
-            return line;
-          });
-          stations = (parsed.stations || []).map(stn => {
-            stn.center = sanitizeCoord(stn.center);
-            return stn;
-          });
+          lines = parsed.lines || [];
+          stations = parsed.stations || [];
         } catch (e) {
           console.error("Failed to load saved alignment data", e);
         }
@@ -547,12 +578,6 @@
       if (activeLine) { activeLine.separation = val; renderAll(); }
     });
 
-    document.getElementById('curvature-intensity').addEventListener('input', (e) => {
-      curvatureFactor = parseInt(e.target.value) / 100;
-      document.getElementById('curvature-val').innerText = curvatureFactor.toFixed(2);
-      renderAll();
-    });
-
     document.getElementById('station-length').addEventListener('input', (e) => {
       activeStationLength = parseInt(e.target.value);
       document.getElementById('station-len-val').innerText = activeStationLength + ' m';
@@ -567,29 +592,31 @@
       if (activeStn) { activeStn.rotation = activeStationRotation; renderAll(); }
     });
 
+    document.getElementById('curve-tension').addEventListener('input', (e) => {
+      curveResolution = parseInt(e.target.value);
+      document.getElementById('tension-val').innerText = curveResolution + ' pts';
+      renderAll();
+    });
+
     document.getElementById('export-kml-btn').addEventListener('click', exportToKML);
 
     function placeStation(coords) {
-      coords = sanitizeCoord(coords);
       let calcRotation = activeStationRotation;
 
       lines.forEach(lineItem => {
         if (lineItem.coordinates.length < 2) return;
-        const spline = buildIndependentCurvedPath(lineItem.coordinates, curvatureFactor);
+        const spline = buildCatmullRomRailwayPath(lineItem.coordinates, curveResolution);
         if (!spline) return;
 
         const snapped = turf.nearestPointOnLine(spline, turf.point(coords));
         const dist = turf.distance(turf.point(coords), snapped, { units: 'meters' });
 
         if (dist < 80) {
-          coords = sanitizeCoord(snapped.geometry.coordinates);
+          coords = snapped.geometry.coordinates;
           const index = snapped.properties.index;
           const splineCoords = spline.geometry.coordinates;
           if (splineCoords[index + 1]) {
-            calcRotation = turf.bearing(
-              turf.point(sanitizeCoord(splineCoords[index])), 
-              turf.point(sanitizeCoord(splineCoords[index + 1]))
-            );
+            calcRotation = turf.bearing(splineCoords[index], splineCoords[index + 1]);
           }
         }
       });
@@ -658,23 +685,22 @@
       const polygonFeatures = [];
 
       stations.forEach(stn => {
-        const center = sanitizeCoord(stn.center);
         const rot = stn.rotation;
         const lenM = stn.length;
         
-        const mainRoof = createMeterBox(center, 28, lenM, rot);
+        const mainRoof = createMeterBox(stn.center, 28, lenM, rot);
         if (mainRoof) {
           mainRoof.properties = { color: '#00bcd4', opacity: 0.6, lineColor: '#00e5ff', lineWidth: 2 };
           polygonFeatures.push(mainRoof);
         }
 
-        const platformL = createOffsetMeterBox(center, -16, 5, lenM * 0.9, rot);
+        const platformL = createOffsetMeterBox(stn.center, -16, 5, lenM * 0.9, rot);
         if (platformL) {
           platformL.properties = { color: '#ffaa00', opacity: 0.85, lineColor: '#ffcc00', lineWidth: 1 };
           polygonFeatures.push(platformL);
         }
 
-        const platformR = createOffsetMeterBox(center, 16, 5, lenM * 0.9, rot);
+        const platformR = createOffsetMeterBox(stn.center, 16, 5, lenM * 0.9, rot);
         if (platformR) {
           platformR.properties = { color: '#ffaa00', opacity: 0.85, lineColor: '#ffcc00', lineWidth: 1 };
           polygonFeatures.push(platformR);
@@ -686,7 +712,6 @@
 
     function createMeterBox(center, widthM, lengthM, rotationDeg) {
       try {
-        center = sanitizeCoord(center);
         const centerPt = turf.point(center);
         const halfWidthKm = (widthM / 2) / 1000;
         const halfLengthKm = (lengthM / 2) / 1000;
@@ -694,10 +719,10 @@
         const p1 = turf.destination(centerPt, halfLengthKm, rotationDeg, { units: 'kilometers' });
         const p2 = turf.destination(centerPt, halfLengthKm, (rotationDeg + 180) % 360, { units: 'kilometers' });
 
-        const c1 = sanitizeCoord(turf.destination(p1, halfWidthKm, (rotationDeg + 90) % 360, { units: 'kilometers' }).geometry.coordinates);
-        const c2 = sanitizeCoord(turf.destination(p1, halfWidthKm, (rotationDeg - 90 + 360) % 360, { units: 'kilometers' }).geometry.coordinates);
-        const c3 = sanitizeCoord(turf.destination(p2, halfWidthKm, (rotationDeg - 90 + 360) % 360, { units: 'kilometers' }).geometry.coordinates);
-        const c4 = sanitizeCoord(turf.destination(p2, halfWidthKm, (rotationDeg + 90) % 360, { units: 'kilometers' }).geometry.coordinates);
+        const c1 = turf.destination(p1, halfWidthKm, (rotationDeg + 90) % 360, { units: 'kilometers' }).geometry.coordinates;
+        const c2 = turf.destination(p1, halfWidthKm, (rotationDeg - 90 + 360) % 360, { units: 'kilometers' }).geometry.coordinates;
+        const c3 = turf.destination(p2, halfWidthKm, (rotationDeg - 90 + 360) % 360, { units: 'kilometers' }).geometry.coordinates;
+        const c4 = turf.destination(p2, halfWidthKm, (rotationDeg + 90) % 360, { units: 'kilometers' }).geometry.coordinates;
 
         return turf.polygon([[c1, c2, c3, c4, c1]]);
       } catch (e) {
@@ -707,10 +732,7 @@
 
     function createOffsetMeterBox(center, offsetX, widthM, lengthM, rotationDeg) {
       try {
-        center = sanitizeCoord(center);
-        const shiftedCenter = sanitizeCoord(
-          turf.destination(turf.point(center), Math.abs(offsetX) / 1000, rotationDeg + (offsetX >= 0 ? 90 : -90), { units: 'kilometers' }).geometry.coordinates
-        );
+        const shiftedCenter = turf.destination(turf.point(center), Math.abs(offsetX) / 1000, rotationDeg + (offsetX >= 0 ? 90 : -90), { units: 'kilometers' }).geometry.coordinates;
         return createMeterBox(shiftedCenter, widthM, lengthM, rotationDeg);
       } catch (e) {
         return null;
@@ -723,7 +745,7 @@
       lines.forEach(lineItem => {
         if (lineItem.coordinates.length < 2) return;
 
-        const mainSpline = buildIndependentCurvedPath(lineItem.coordinates, curvatureFactor);
+        const mainSpline = buildCatmullRomRailwayPath(lineItem.coordinates, curveResolution);
         if (mainSpline) lineFeatures.push(mainSpline);
 
         if (lineItem.isDouble && mainSpline) {
@@ -744,67 +766,68 @@
 
     function generateParallelOffset(splineFeature, offsetKm) {
       try {
-        const offsetResult = turf.lineOffset(splineFeature, offsetKm, { units: 'kilometers' });
-        offsetResult.geometry.coordinates = offsetResult.geometry.coordinates.map(sanitizeCoord);
-        return offsetResult;
+        return turf.lineOffset(splineFeature, offsetKm, { units: 'kilometers' });
       } catch (e) {
         return null;
       }
     }
 
-    // INDEPENDENT LOCAL BEZIER CURVE GENERATOR
-    // Calculates smooth curved paths strictly pair-by-pair without referencing outer neighbors
-    function buildIndependentCurvedPath(rawPts, curvature = 0.35, samplesPerSegment = 16) {
-      const pts = rawPts.map(sanitizeCoord).filter(p => p !== null);
+    function buildCatmullRomRailwayPath(pts, samplesPerSegment = 16) {
       if (pts.length < 2) return null;
-      if (pts.length === 2 || curvature <= 0) return turf.lineString(pts);
+      if (pts.length === 2) return turf.lineString(pts);
 
+      const p0_ext = [2 * pts[0][0] - pts[1][0], 2 * pts[0][1] - pts[1][1]];
+      const pN_ext = [2 * pts[pts.length - 1][0] - pts[pts.length - 2][0], 2 * pts[pts.length - 1][1] - pts[pts.length - 2][1]];
+
+      const fullPts = [p0_ext, ...pts, pN_ext];
       const pathCoords = [];
 
-      for (let i = 0; i < pts.length - 1; i++) {
-        const p1 = pts[i];
-        const p2 = pts[i + 1];
+      const alpha = 0.5;
 
-        // Local direction vector for the current segment
-        const dx = p2[0] - p1[0];
-        const dy = p2[1] - p1[1];
+      for (let i = 0; i < fullPts.length - 3; i++) {
+        const p0 = fullPts[i];
+        const p1 = fullPts[i + 1];
+        const p2 = fullPts[i + 2];
+        const p3 = fullPts[i + 3];
 
-        // Local entry and exit tangent angles derived strictly from current pair
-        // keeping previous curves locked in place when a new point is appended
-        let anglePrev = Math.atan2(dy, dx);
-        if (i > 0) {
-          const prevDx = pts[i][0] - pts[i - 1][0];
-          const prevDy = pts[i][1] - pts[i - 1][1];
-          anglePrev = Math.atan2(prevDy, prevDx);
+        function getT(t, pA, pB) {
+          const dx = pB[0] - pA[0];
+          const dy = pB[1] - pA[1];
+          return t + Math.pow(dx * dx + dy * dy, alpha / 2);
         }
 
-        const currentAngle = Math.atan2(dy, dx);
-        const dist = Math.hypot(dx, dy);
-        const handleLength = dist * curvature;
+        const t0 = 0;
+        const t1 = getT(t0, p0, p1);
+        const t2 = getT(t1, p1, p2);
+        const t3 = getT(t2, p2, p3);
 
-        // Quadratic/Cubic Control Points relative only to segment bounds
-        const cp1x = p1[0] + Math.cos(anglePrev) * handleLength;
-        const cp1y = p1[1] + Math.sin(anglePrev) * handleLength;
+        if (t1 === t0 || t2 === t1 || t3 === t2) {
+          pathCoords.push(p1);
+          continue;
+        }
 
-        const cp2x = p2[0] - Math.cos(currentAngle) * handleLength;
-        const cp2y = p2[1] - Math.sin(currentAngle) * handleLength;
-
-        // Cubic Bezier interpolation step
         for (let step = 0; step < samplesPerSegment; step++) {
-          const t = step / samplesPerSegment;
-          const u = 1 - t;
+          const t = t1 + (step / samplesPerSegment) * (t2 - t1);
 
-          const x = u * u * u * p1[0] +
-                    3 * u * u * t * cp1x +
-                    3 * u * t * t * cp2x +
-                    t * t * t * p2[0];
+          const A1_x = ((t1 - t) * p0[0] + (t - t0) * p1[0]) / (t1 - t0);
+          const A1_y = ((t1 - t) * p0[1] + (t - t0) * p1[1]) / (t1 - t0);
 
-          const y = u * u * u * p1[1] +
-                    3 * u * u * t * cp1y +
-                    3 * u * t * t * cp2y +
-                    t * t * t * p2[1];
+          const A2_x = ((t2 - t) * p1[0] + (t - t1) * p2[0]) / (t2 - t1);
+          const A2_y = ((t2 - t) * p1[1] + (t - t1) * p2[1]) / (t2 - t1);
 
-          pathCoords.push(sanitizeCoord([x, y]));
+          const A3_x = ((t3 - t) * p2[0] + (t - t2) * p3[0]) / (t3 - t2);
+          const A3_y = ((t3 - t) * p2[1] + (t - t2) * p3[1]) / (t3 - t2);
+
+          const B1_x = ((t2 - t) * A1_x + (t - t0) * A2_x) / (t2 - t0);
+          const B1_y = ((t2 - t) * A1_y + (t - t0) * A2_y) / (t2 - t0);
+
+          const B2_x = ((t3 - t) * A2_x + (t - t1) * A3_x) / (t3 - t1);
+          const B2_y = ((t3 - t) * A2_y + (t - t1) * A3_y) / (t3 - t1);
+
+          const C_x = ((t2 - t) * B1_x + (t - t1) * B2_x) / (t2 - t1);
+          const C_y = ((t2 - t) * B1_y + (t - t1) * B2_y) / (t2 - t1);
+
+          pathCoords.push([C_x, C_y]);
         }
       }
 
@@ -819,8 +842,7 @@
 
       const activeLine = lines.find(r => r.id === activeLineId);
       if (activeLine && activeLine.coordinates) {
-        activeLine.coordinates.forEach((rawCoords, idx) => {
-          const coords = sanitizeCoord(rawCoords);
+        activeLine.coordinates.forEach((coords, idx) => {
           const el = document.createElement('div');
           el.className = 'custom-node-marker';
 
@@ -838,7 +860,7 @@
           marker.on('dragstart', () => { isDraggingNode = true; });
           marker.on('drag', () => {
             const pos = marker.getLngLat();
-            activeLine.coordinates[idx] = sanitizeCoord([pos.lng, pos.lat]);
+            activeLine.coordinates[idx] = [pos.lng, pos.lat];
             renderAll();
             updateRubberband();
           });
@@ -851,10 +873,9 @@
       }
 
       stations.forEach(stn => {
-        const center = sanitizeCoord(stn.center);
         const el = document.createElement('div');
         el.className = 'station-marker';
-        el.innerHTML = 'ls';
+        el.innerHTML = '🚉';
         el.style.fontSize = '18px';
 
         el.addEventListener('click', (e) => {
@@ -875,13 +896,13 @@
         });
 
         const marker = new maplibregl.Marker({ element: el, draggable: true })
-          .setLngLat(center)
+          .setLngLat(stn.center)
           .addTo(map);
 
         marker.on('dragstart', () => { isDraggingNode = true; });
         marker.on('drag', () => {
           const pos = marker.getLngLat();
-          stn.center = sanitizeCoord([pos.lng, pos.lat]);
+          stn.center = [pos.lng, pos.lat];
           renderAll();
         });
         marker.on('dragend', () => {
@@ -974,7 +995,7 @@
           saveToLocalStorage();
         });
 
-        titleBox.appendChild(document.createTextNode('ls '));
+        titleBox.appendChild(document.createTextNode('🚉 '));
         titleBox.appendChild(nameInput);
 
         const deleteBtn = document.createElement('button');
@@ -1015,11 +1036,11 @@
       let kml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
       kml += `<kml xmlns="http://www.opengis.net/kml/2.2">\n`;
       kml += `  <Document>\n`;
-      kml += `    <name>RailwayGalore Alignments</name>\n`;
+      kml += `    <name>NSCR Railway Alignments</name>\n`;
 
       lines.forEach(lineItem => {
         if (lineItem.coordinates.length < 2) return;
-        const spline = buildIndependentCurvedPath(lineItem.coordinates, curvatureFactor);
+        const spline = buildCatmullRomRailwayPath(lineItem.coordinates, curveResolution);
         if (!spline) return;
 
         const coordsString = spline.geometry.coordinates
@@ -1054,11 +1075,10 @@
       });
 
       stations.forEach(stn => {
-        const center = sanitizeCoord(stn.center);
         kml += `    <Placemark>\n`;
         kml += `      <name>${stn.name}</name>\n`;
         kml += `      <Point>\n`;
-        kml += `        <coordinates>${center[0]},${center[1]},0</coordinates>\n`;
+        kml += `        <coordinates>${stn.center[0]},${stn.center[1]},0</coordinates>\n`;
         kml += `      </Point>\n`;
         kml += `    </Placemark>\n`;
       });
@@ -1069,7 +1089,7 @@
       const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = `RailwayGalore_Export_${Date.now()}.kml`;
+      link.download = `NSCR_Alignment_${Date.now()}.kml`;
       link.click();
     }
 

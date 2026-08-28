@@ -6,8 +6,8 @@
   <title>Railway Route Alignment Studio</title>
   
   <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
-  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -25,6 +25,25 @@
     /* Crosshair Cursor Mode */
     #map.crosshair-mode canvas {
       cursor: crosshair !important;
+    }
+
+    /* Top Center Search Bar Container */
+    #top-center-search {
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      display: flex;
+      gap: 6px;
+      width: 380px;
+      max-width: 90vw;
+      background: rgba(13, 17, 23, 0.94);
+      padding: 8px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(12px);
     }
 
     #side-panel {
@@ -88,19 +107,14 @@
     .sub-title { font-size: 11px; color: #8b949e; }
 
     /* Search Box Styles */
-    .search-box {
-      display: flex;
-      gap: 6px;
-    }
-
     .search-input {
       flex-grow: 1;
       background: rgba(0, 0, 0, 0.4);
       border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 8px;
+      border-radius: 6px;
       color: #f0f6fc;
       padding: 8px 10px;
-      font-size: 11px;
+      font-size: 12px;
       outline: none;
     }
 
@@ -112,15 +126,31 @@
       background: rgba(255, 170, 0, 0.15);
       border: 1px solid #ffaa00;
       color: #ffaa00;
-      border-radius: 8px;
-      padding: 0 12px;
+      border-radius: 6px;
+      padding: 0 14px;
       cursor: pointer;
       font-weight: 600;
-      font-size: 11px;
+      font-size: 12px;
+      transition: background 0.2s ease;
     }
 
     .search-btn:hover { 
       background: rgba(255, 170, 0, 0.3); 
+    }
+
+    .clear-search-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #8b949e;
+      border-radius: 6px;
+      padding: 0 10px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .clear-search-btn:hover {
+      color: #f0f6fc;
+      border-color: rgba(255, 255, 255, 0.3);
     }
 
     .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
@@ -275,6 +305,13 @@
 </head>
 <body>
 
+  <!-- Top Center Coordinate Search Bar -->
+  <div id="top-center-search">
+    <input type="text" id="coord-input" class="search-input" placeholder="Lat, Lng (e.g. 14.5995, 120.9842)" />
+    <button id="coord-search-btn" class="search-btn">Go</button>
+    <button id="clear-search-btn" class="clear-search-btn" title="Clear Search Pin">✕</button>
+  </div>
+
   <div id="top-right-toolbar">
     <button id="undo-point-btn" class="top-action-btn" title="Undo Last Point (Ctrl+Z)">↩ Undo Point</button>
   </div>
@@ -283,12 +320,6 @@
     <div class="panel-header">
       <h2>NSCR ROUTE STUDIO</h2>
       <span class="sub-title">Exact Node-Lock Alignment</span>
-    </div>
-
-    <!-- Coordinate Search Bar Inside Side Panel -->
-    <div class="search-box">
-      <input type="text" id="coord-input" class="search-input" placeholder="Lat, Lng (e.g. 14.5995, 120.9842)" />
-      <button id="coord-search-btn" class="search-btn">Go</button>
     </div>
 
     <div class="tool-grid">
@@ -402,7 +433,6 @@
     let searchMarker = null;
 
     map.on('load', () => {
-      // Station layers
       map.addSource('station-polygons-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addLayer({
         id: 'station-roof-layer', type: 'fill', source: 'station-polygons-source',
@@ -413,7 +443,6 @@
         paint: { 'line-color': ['get', 'lineColor'], 'line-width': ['get', 'lineWidth'] }
       });
 
-      // Semi-transparent rubberband / preview line source & layer
       map.addSource('rubberband-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addLayer({
         id: 'rubberband-layer',
@@ -427,7 +456,6 @@
         }
       });
 
-      // Track layers
       map.addSource('rail-bed-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addLayer({
         id: 'rail-bed-layer', type: 'line', source: 'rail-bed-source',
@@ -457,7 +485,6 @@
         renderAll();
       }
 
-      // Mousemove for rubberband dashed preview
       map.on('mousemove', (e) => {
         currentMousePos = [e.lngLat.lng, e.lngLat.lat];
         updateRubberband();
@@ -498,7 +525,7 @@
       });
     });
 
-    // Coordinate Search Logic
+    /* Coordinate Search & Navigation Logic */
     function handleCoordinateSearch() {
       const input = document.getElementById('coord-input').value.trim();
       if (!input) return;
@@ -509,11 +536,12 @@
         let val2 = parseFloat(parts[1]);
 
         if (isNaN(val1) || isNaN(val2)) {
-          alert('Invalid coordinates format. Use "Lat, Lng" or "Lng, Lat".');
+          alert('Invalid coordinate format. Please use "Lat, Lng" or "Lng, Lat".');
           return;
         }
 
         let lat, lng;
+        // Check for standard Latitude (-90 to 90) vs Longitude (-180 to 180) ranges
         if (Math.abs(val1) <= 90 && Math.abs(val2) <= 180) {
           lat = val1;
           lng = val2;
@@ -521,20 +549,36 @@
           lng = val1;
           lat = val2;
         } else {
-          alert('Coordinates out of bounds (-90 to 90 for Lat, -180 to 180 for Lng).');
+          alert('Coordinates out of valid range (-90 to 90 for Lat, -180 to 180 for Lng).');
           return;
         }
 
-        map.flyTo({ center: [lng, lat], zoom: 16 });
+        map.flyTo({ center: [lng, lat], zoom: 16, essential: true });
 
         if (searchMarker) searchMarker.remove();
+        
+        const popup = new maplibregl.Popup({ offset: 25 })
+          .setText(`Location: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+
         searchMarker = new maplibregl.Marker({ color: '#ffaa00' })
           .setLngLat([lng, lat])
+          .setPopup(popup)
           .addTo(map);
+          
+        searchMarker.togglePopup();
       }
     }
 
+    function clearSearchMarker() {
+      if (searchMarker) {
+        searchMarker.remove();
+        searchMarker = null;
+      }
+      document.getElementById('coord-input').value = '';
+    }
+
     document.getElementById('coord-search-btn').addEventListener('click', handleCoordinateSearch);
+    document.getElementById('clear-search-btn').addEventListener('click', clearSearchMarker);
     document.getElementById('coord-input').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') handleCoordinateSearch();
     });
@@ -899,7 +943,7 @@
           const A1_y = ((t1 - t) * p0[1] + (t - t0) * p1[1]) / (t1 - t0);
 
           const A2_x = ((t2 - t) * p1[0] + (t - t1) * p2[0]) / (t2 - t1);
-          const A2_y = ((t2 - t) * p1[1] + (t - t1) * p2[0]) / (t2 - t1);
+          const A2_y = ((t2 - t) * p1[1] + (t - t0) * p2[0]) / (t2 - t1);
 
           const A3_x = ((t3 - t) * p2[0] + (t - t2) * p3[0]) / (t3 - t2);
           const A3_y = ((t3 - t) * p2[1] + (t - t2) * p3[1]) / (t3 - t2);
@@ -911,7 +955,7 @@
           const B2_y = ((t3 - t) * A2_y + (t - t1) * B2_y) / (t3 - t1);
 
           const C_x = ((t2 - t) * B1_x + (t - t1) * B2_x) / (t2 - t1);
-          const C_y = ((t2 - t) * B1_y + (t - t1) * B2_y) / (t2 - t1);
+          const C_y = ((t2 - t) * B1_y + (t - t1) * B2_x) / (t2 - t1);
 
           pathCoords.push([C_x, C_y]);
         }

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RailwayGalore v1.0.3 (Strict Locked Segments)</title>
+  <title>RailwayGalore v1.0.4 (Independent Curves)</title>
   
   <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
@@ -48,68 +48,51 @@
 
     #top-right-toolbar {
       position: absolute;
-      top: 16px;
-      right: 50px;
-      z-index: 100;
-      display: flex;
-      gap: 8px;
+      top: 16px; right: 50px;
+      z-index: 100; display: flex; gap: 8px;
     }
 
     .top-action-btn {
       background: rgba(13, 17, 23, 0.90);
       border: 1px solid rgba(255, 255, 255, 0.2);
-      color: #f0f6fc;
-      padding: 8px 14px;
-      border-radius: 8px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-      backdrop-filter: blur(10px);
-      transition: all 0.2s ease;
-      display: flex;
-      align-items: center;
-      gap: 6px;
+      color: #f0f6fc; padding: 8px 14px;
+      border-radius: 8px; font-size: 12px; font-weight: 600;
+      cursor: pointer; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(10px); transition: all 0.2s ease;
+      display: flex; align-items: center; gap: 6px;
     }
 
     .top-action-btn:hover {
       background: rgba(255, 170, 0, 0.2);
-      border-color: #ffaa00;
-      color: #ffaa00;
+      border-color: #ffaa00; color: #ffaa00;
     }
 
     .panel-header h2 {
       font-size: 15px; font-weight: 700;
-      letter-spacing: 1px; margin: 0;
-      color: #ffaa00;
+      letter-spacing: 1px; margin: 0; color: #ffaa00;
     }
 
     .sub-title { font-size: 11px; color: #8b949e; }
-
     .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 
     .tool-btn {
       padding: 8px;
       background: rgba(255, 255, 255, 0.05);
-      color: #c9d1d9;
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 8px;
-      cursor: pointer;
+      color: #c9d1d9; border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px; cursor: pointer;
       font-weight: 600; font-size: 11px;
       display: flex; align-items: center; justify-content: center; gap: 6px;
     }
 
     .tool-btn.active {
       background: rgba(255, 170, 0, 0.2);
-      color: #ffaa00;
-      border-color: #ffaa00;
+      color: #ffaa00; border-color: #ffaa00;
     }
 
     .toggle-row {
       display: flex; justify-content: space-between; align-items: center;
-      background: rgba(255, 255, 255, 0.03);
-      padding: 8px 12px; border-radius: 8px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.03); padding: 8px 12px;
+      border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.08);
       font-size: 11px;
     }
 
@@ -135,36 +118,28 @@
     input[type="range"] { width: 100%; accent-color: #ffaa00; cursor: pointer; }
 
     .primary-btn {
-      width: 100%; padding: 10px;
-      background: #d97706; color: #ffffff;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px; cursor: pointer;
-      font-weight: 600; font-size: 12px;
+      width: 100%; padding: 10px; background: #d97706; color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px;
+      cursor: pointer; font-weight: 600; font-size: 12px;
     }
 
     .done-btn {
-      width: 100%; padding: 10px;
-      background: #238636; color: #ffffff;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px; cursor: pointer;
-      font-weight: 600; font-size: 12px;
+      width: 100%; padding: 10px; background: #238636; color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px;
+      cursor: pointer; font-weight: 600; font-size: 12px;
     }
 
     .kml-btn {
-      width: 100%; padding: 10px;
-      background: #1f6beb; color: #ffffff;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px; cursor: pointer;
-      font-weight: 600; font-size: 12px;
+      width: 100%; padding: 10px; background: #1f6beb; color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px;
+      cursor: pointer; font-weight: 600; font-size: 12px;
       display: flex; align-items: center; justify-content: center; gap: 6px;
     }
 
     .stats-card {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 8px; padding: 10px;
-      display: flex; flex-direction: column; gap: 4px;
-      font-size: 11px;
+      background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px; padding: 10px; display: flex; flex-direction: column;
+      gap: 4px; font-size: 11px;
     }
 
     .stat-row { display: flex; justify-content: space-between; align-items: center; }
@@ -186,14 +161,9 @@
     .item-title-container { display: flex; align-items: center; gap: 6px; flex-grow: 1; min-width: 0; }
     
     .rename-input {
-      background: rgba(0, 0, 0, 0.5);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: #f0f6fc;
-      border-radius: 4px;
-      padding: 2px 6px;
-      font-size: 11px;
-      width: 100%;
-      outline: none;
+      background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #f0f6fc; border-radius: 4px; padding: 2px 6px;
+      font-size: 11px; width: 100%; outline: none;
     }
     .rename-input:focus { border-color: #ffaa00; }
 
@@ -201,38 +171,26 @@
     .action-icon-btn:hover { color: #ff453a; }
 
     #clear-btn {
-      padding: 8px;
-      background: rgba(255, 59, 48, 0.15); color: #ff453a;
-      border: 1px solid rgba(255, 59, 48, 0.3);
-      border-radius: 8px; cursor: pointer;
-      font-weight: 600; font-size: 11px;
+      padding: 8px; background: rgba(255, 59, 48, 0.15); color: #ff453a;
+      border: 1px solid rgba(255, 59, 48, 0.3); border-radius: 8px;
+      cursor: pointer; font-weight: 600; font-size: 11px;
     }
 
     #reset-storage-btn {
-      padding: 6px;
-      background: transparent; color: #8b949e;
-      border: none; cursor: pointer;
-      font-size: 10px; text-decoration: underline;
+      padding: 6px; background: transparent; color: #8b949e;
+      border: none; cursor: pointer; font-size: 10px; text-decoration: underline;
       align-self: center;
     }
 
     .custom-node-marker {
-      width: 12px; height: 12px;
-      background: #ffffff;
-      border: 2px solid #d97706;
-      border-radius: 50%;
-      cursor: grab;
-      box-shadow: 0 0 6px rgba(0,0,0,0.8);
-      pointer-events: auto !important;
+      width: 12px; height: 12px; background: #ffffff;
+      border: 2px solid #d97706; border-radius: 50%; cursor: grab;
+      box-shadow: 0 0 6px rgba(0,0,0,0.8); pointer-events: auto !important;
     }
 
     .station-marker {
-      cursor: grab;
-      pointer-events: auto !important;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      user-select: none;
+      cursor: grab; pointer-events: auto !important;
+      display: flex; align-items: center; justify-content: center; user-select: none;
     }
   </style>
 </head>
@@ -244,8 +202,8 @@
 
   <div id="side-panel">
     <div class="panel-header">
-      <h2>RAILWAYGALORE v1.0.3</h2>
-      <span class="sub-title">Strict Segment Locking</span>
+      <h2>RAILWAYGALORE v1.0.4</h2>
+      <span class="sub-title">Isolated Curved Segments</span>
     </div>
 
     <div class="tool-grid">
@@ -268,6 +226,14 @@
         <strong id="separation-val">12 m</strong>
       </div>
       <input type="range" id="separation-dist" min="4" max="50" value="12">
+    </div>
+
+    <div class="control-group">
+      <div class="label-row">
+        <span>Curvature / Smoothness</span>
+        <strong id="curvature-val">0.35</strong>
+      </div>
+      <input type="range" id="curvature-intensity" min="0" max="80" value="35">
     </div>
 
     <div class="control-group">
@@ -342,6 +308,7 @@
 
     let isBranchMode = false;
     let isEditingMode = true;
+    let curvatureFactor = 0.35;
 
     let activeStationLength = 210;
     let activeStationRotation = 0;
@@ -580,6 +547,12 @@
       if (activeLine) { activeLine.separation = val; renderAll(); }
     });
 
+    document.getElementById('curvature-intensity').addEventListener('input', (e) => {
+      curvatureFactor = parseInt(e.target.value) / 100;
+      document.getElementById('curvature-val').innerText = curvatureFactor.toFixed(2);
+      renderAll();
+    });
+
     document.getElementById('station-length').addEventListener('input', (e) => {
       activeStationLength = parseInt(e.target.value);
       document.getElementById('station-len-val').innerText = activeStationLength + ' m';
@@ -602,7 +575,7 @@
 
       lines.forEach(lineItem => {
         if (lineItem.coordinates.length < 2) return;
-        const spline = buildLockedRailwayPath(lineItem.coordinates);
+        const spline = buildIndependentCurvedPath(lineItem.coordinates, curvatureFactor);
         if (!spline) return;
 
         const snapped = turf.nearestPointOnLine(spline, turf.point(coords));
@@ -750,7 +723,7 @@
       lines.forEach(lineItem => {
         if (lineItem.coordinates.length < 2) return;
 
-        const mainSpline = buildLockedRailwayPath(lineItem.coordinates);
+        const mainSpline = buildIndependentCurvedPath(lineItem.coordinates, curvatureFactor);
         if (mainSpline) lineFeatures.push(mainSpline);
 
         if (lineItem.isDouble && mainSpline) {
@@ -779,14 +752,64 @@
       }
     }
 
-    // ABSOLUTE STRICT LOCKED PATH GENERATION
-    // Each pair [P_i, P_{i+1}] is treated as an immutable isolated segment
-    function buildLockedRailwayPath(rawPts) {
+    // INDEPENDENT LOCAL BEZIER CURVE GENERATOR
+    // Calculates smooth curved paths strictly pair-by-pair without referencing outer neighbors
+    function buildIndependentCurvedPath(rawPts, curvature = 0.35, samplesPerSegment = 16) {
       const pts = rawPts.map(sanitizeCoord).filter(p => p !== null);
       if (pts.length < 2) return null;
-      
-      // Directly output strict node-to-node vertex array guaranteeing zero deformation
-      return turf.lineString(pts);
+      if (pts.length === 2 || curvature <= 0) return turf.lineString(pts);
+
+      const pathCoords = [];
+
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p1 = pts[i];
+        const p2 = pts[i + 1];
+
+        // Local direction vector for the current segment
+        const dx = p2[0] - p1[0];
+        const dy = p2[1] - p1[1];
+
+        // Local entry and exit tangent angles derived strictly from current pair
+        // keeping previous curves locked in place when a new point is appended
+        let anglePrev = Math.atan2(dy, dx);
+        if (i > 0) {
+          const prevDx = pts[i][0] - pts[i - 1][0];
+          const prevDy = pts[i][1] - pts[i - 1][1];
+          anglePrev = Math.atan2(prevDy, prevDx);
+        }
+
+        const currentAngle = Math.atan2(dy, dx);
+        const dist = Math.hypot(dx, dy);
+        const handleLength = dist * curvature;
+
+        // Quadratic/Cubic Control Points relative only to segment bounds
+        const cp1x = p1[0] + Math.cos(anglePrev) * handleLength;
+        const cp1y = p1[1] + Math.sin(anglePrev) * handleLength;
+
+        const cp2x = p2[0] - Math.cos(currentAngle) * handleLength;
+        const cp2y = p2[1] - Math.sin(currentAngle) * handleLength;
+
+        // Cubic Bezier interpolation step
+        for (let step = 0; step < samplesPerSegment; step++) {
+          const t = step / samplesPerSegment;
+          const u = 1 - t;
+
+          const x = u * u * u * p1[0] +
+                    3 * u * u * t * cp1x +
+                    3 * u * t * t * cp2x +
+                    t * t * t * p2[0];
+
+          const y = u * u * u * p1[1] +
+                    3 * u * u * t * cp1y +
+                    3 * u * t * t * cp2y +
+                    t * t * t * p2[1];
+
+          pathCoords.push(sanitizeCoord([x, y]));
+        }
+      }
+
+      pathCoords.push(pts[pts.length - 1]);
+      return turf.lineString(pathCoords);
     }
 
     function syncMarkers() {
@@ -996,7 +1019,7 @@
 
       lines.forEach(lineItem => {
         if (lineItem.coordinates.length < 2) return;
-        const spline = buildLockedRailwayPath(lineItem.coordinates);
+        const spline = buildIndependentCurvedPath(lineItem.coordinates, curvatureFactor);
         if (!spline) return;
 
         const coordsString = spline.geometry.coordinates

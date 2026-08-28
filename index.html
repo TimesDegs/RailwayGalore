@@ -235,6 +235,41 @@
       justify-content: center;
       user-select: none;
     }
+    
+    .search-box {
+  display: flex;
+  gap: 6px;
+}
+
+.search-input {
+  flex-grow: 1;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #f0f6fc;
+  padding: 8px 10px;
+  font-size: 11px;
+  outline: none;
+}
+
+.search-input:focus { 
+  border-color: #ffaa00; 
+}
+
+.search-btn {
+  background: rgba(255, 170, 0, 0.15);
+  border: 1px solid #ffaa00;
+  color: #ffaa00;
+  border-radius: 8px;
+  padding: 0 12px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.search-btn:hover { 
+  background: rgba(255, 170, 0, 0.3); 
+}
   </style>
 </head>
 <body>
@@ -316,6 +351,11 @@
   </div>
 
   <div id="map" class="crosshair-mode"></div>
+  
+  <div class="search-box">
+   <input type="text" id="coord-input" class="search-input" placeholder="Lat, Lng (e.g. 14.5995, 120.9842)" />
+   <button id="coord-search-btn" class="search-btn">Go</button>
+  </div>
 
   <script>
     const STORAGE_KEY = 'nscr_route_studio_save_v1';
@@ -1108,6 +1148,48 @@
         updateRubberband();
       }
     });
+    
+    let searchMarker = null;
+
+function handleCoordinateSearch() {
+  const input = document.getElementById('coord-input').value.trim();
+  if (!input) return;
+
+  const parts = input.split(/[\s,]+/);
+  if (parts.length >= 2) {
+    let val1 = parseFloat(parts[0]);
+    let val2 = parseFloat(parts[1]);
+
+    if (isNaN(val1) || isNaN(val2)) {
+      alert('Invalid coordinates format. Use "Lat, Lng" or "Lng, Lat".');
+      return;
+    }
+
+    let lat, lng;
+    if (Math.abs(val1) <= 90 && Math.abs(val2) <= 180) {
+      lat = val1;
+      lng = val2;
+    } else if (Math.abs(val2) <= 90 && Math.abs(val1) <= 180) {
+      lng = val1;
+      lat = val2;
+    } else {
+      alert('Coordinates out of bounds (-90 to 90 for Lat, -180 to 180 for Lng).');
+      return;
+    }
+
+    map.flyTo({ center: [lng, lat], zoom: 16 });
+
+    if (searchMarker) searchMarker.remove();
+    searchMarker = new maplibregl.Marker({ color: '#ffaa00' })
+      .setLngLat([lng, lat])
+      .addTo(map);
+  }
+}
+
+document.getElementById('coord-search-btn').addEventListener('click', handleCoordinateSearch);
+document.getElementById('coord-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') handleCoordinateSearch();
+});
   </script>
 </body>
 </html>

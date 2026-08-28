@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RailwayGalore v1.0.2 (Independent Segments)</title>
+  <title>RailwayGalore v1.0.3 (Strict Locked Segments)</title>
   
   <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
@@ -244,8 +244,8 @@
 
   <div id="side-panel">
     <div class="panel-header">
-      <h2>RAILWAYGALORE v1.0.2</h2>
-      <span class="sub-title">Independent Segments Engine</span>
+      <h2>RAILWAYGALORE v1.0.3</h2>
+      <span class="sub-title">Strict Segment Locking</span>
     </div>
 
     <div class="tool-grid">
@@ -284,14 +284,6 @@
         <strong id="station-rot-val">0°</strong>
       </div>
       <input type="range" id="station-rotation" min="0" max="359" value="0">
-    </div>
-
-    <div class="control-group">
-      <div class="label-row">
-        <span>Segment Smoothness</span>
-        <strong id="tension-val">16 pts</strong>
-      </div>
-      <input type="range" id="curve-tension" min="4" max="32" value="16">
     </div>
 
     <button id="finish-btn" class="primary-btn">Finish Segment [Enter]</button>
@@ -349,7 +341,6 @@
     let isDraggingNode = false;
 
     let isBranchMode = false;
-    let curveResolution = 16;
     let isEditingMode = true;
 
     let activeStationLength = 210;
@@ -603,12 +594,6 @@
       if (activeStn) { activeStn.rotation = activeStationRotation; renderAll(); }
     });
 
-    document.getElementById('curve-tension').addEventListener('input', (e) => {
-      curveResolution = parseInt(e.target.value);
-      document.getElementById('tension-val').innerText = curveResolution + ' pts';
-      renderAll();
-    });
-
     document.getElementById('export-kml-btn').addEventListener('click', exportToKML);
 
     function placeStation(coords) {
@@ -617,7 +602,7 @@
 
       lines.forEach(lineItem => {
         if (lineItem.coordinates.length < 2) return;
-        const spline = buildCatmullRomRailwayPath(lineItem.coordinates, curveResolution);
+        const spline = buildLockedRailwayPath(lineItem.coordinates);
         if (!spline) return;
 
         const snapped = turf.nearestPointOnLine(spline, turf.point(coords));
@@ -765,7 +750,7 @@
       lines.forEach(lineItem => {
         if (lineItem.coordinates.length < 2) return;
 
-        const mainSpline = buildCatmullRomRailwayPath(lineItem.coordinates, curveResolution);
+        const mainSpline = buildLockedRailwayPath(lineItem.coordinates);
         if (mainSpline) lineFeatures.push(mainSpline);
 
         if (lineItem.isDouble && mainSpline) {
@@ -794,58 +779,14 @@
       }
     }
 
-    // INDEPENDENT SEGMENT INTERPOLATION ENGINE
-    // Interpolates each pair [P_i, P_{i+1}] independently without cascading math
-    function buildCatmullRomRailwayPath(rawPts, samplesPerSegment = 16) {
+    // ABSOLUTE STRICT LOCKED PATH GENERATION
+    // Each pair [P_i, P_{i+1}] is treated as an immutable isolated segment
+    function buildLockedRailwayPath(rawPts) {
       const pts = rawPts.map(sanitizeCoord).filter(p => p !== null);
       if (pts.length < 2) return null;
-      if (pts.length === 2) return turf.lineString(pts);
-
-      const pathCoords = [];
-
-      for (let i = 0; i < pts.length - 1; i++) {
-        const p1 = pts[i];
-        const p2 = pts[i + 1];
-
-        // Isolated local tangents calculated only from immediate neighbors
-        let t1x, t1y, t2x, t2y;
-
-        if (i === 0) {
-          t1x = p2[0] - p1[0];
-          t1y = p2[1] - p1[1];
-        } else {
-          t1x = (p2[0] - pts[i - 1][0]) * 0.5;
-          t1y = (p2[1] - pts[i - 1][1]) * 0.5;
-        }
-
-        if (i === pts.length - 2) {
-          t2x = p2[0] - p1[0];
-          t2y = p2[1] - p1[1];
-        } else {
-          t2x = (pts[i + 2][0] - p1[0]) * 0.5;
-          t2y = (pts[i + 2][1] - p1[1]) * 0.5;
-        }
-
-        // Cubic Hermite Interpolation over the local [0, 1] segment interval
-        for (let step = 0; step < samplesPerSegment; step++) {
-          const t = step / samplesPerSegment;
-          const t2 = t * t;
-          const t3 = t2 * t;
-
-          const h1 = 2 * t3 - 3 * t2 + 1;
-          const h2 = -2 * t3 + 3 * t2;
-          const h3 = t3 - 2 * t2 + t;
-          const h4 = t3 - t2;
-
-          const x = h1 * p1[0] + h2 * p2[0] + h3 * t1x + h4 * t2x;
-          const y = h1 * p1[1] + h2 * p2[1] + h3 * t1y + h4 * t2y;
-
-          pathCoords.push(sanitizeCoord([x, y]));
-        }
-      }
-
-      pathCoords.push(pts[pts.length - 1]);
-      return turf.lineString(pathCoords);
+      
+      // Directly output strict node-to-node vertex array guaranteeing zero deformation
+      return turf.lineString(pts);
     }
 
     function syncMarkers() {
@@ -1055,7 +996,7 @@
 
       lines.forEach(lineItem => {
         if (lineItem.coordinates.length < 2) return;
-        const spline = buildCatmullRomRailwayPath(lineItem.coordinates, curveResolution);
+        const spline = buildLockedRailwayPath(lineItem.coordinates);
         if (!spline) return;
 
         const coordsString = spline.geometry.coordinates

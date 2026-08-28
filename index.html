@@ -6,8 +6,8 @@
   <title>Railway Route Alignment Studio</title>
   
   <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
-  <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
 
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -22,26 +22,9 @@
 
     #map { width: 100vw; height: 100vh; }
 
+    /* Crosshair Cursor Mode */
     #map.crosshair-mode canvas {
       cursor: crosshair !important;
-    }
-
-    #top-center-search {
-      position: absolute;
-      top: 16px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 100;
-      display: flex;
-      gap: 6px;
-      width: 380px;
-      max-width: 90vw;
-      background: rgba(13, 17, 23, 0.94);
-      padding: 8px;
-      border-radius: 10px;
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-      backdrop-filter: blur(12px);
     }
 
     #side-panel {
@@ -104,14 +87,19 @@
 
     .sub-title { font-size: 11px; color: #8b949e; }
 
+    .search-box {
+      display: flex;
+      gap: 6px;
+    }
+
     .search-input {
       flex-grow: 1;
       background: rgba(0, 0, 0, 0.4);
       border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 6px;
+      border-radius: 8px;
       color: #f0f6fc;
       padding: 8px 10px;
-      font-size: 12px;
+      font-size: 11px;
       outline: none;
     }
 
@@ -123,31 +111,15 @@
       background: rgba(255, 170, 0, 0.15);
       border: 1px solid #ffaa00;
       color: #ffaa00;
-      border-radius: 6px;
-      padding: 0 14px;
+      border-radius: 8px;
+      padding: 0 12px;
       cursor: pointer;
       font-weight: 600;
-      font-size: 12px;
-      transition: background 0.2s ease;
+      font-size: 11px;
     }
 
     .search-btn:hover { 
       background: rgba(255, 170, 0, 0.3); 
-    }
-
-    .clear-search-btn {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      color: #8b949e;
-      border-radius: 6px;
-      padding: 0 10px;
-      cursor: pointer;
-      font-size: 12px;
-    }
-
-    .clear-search-btn:hover {
-      color: #f0f6fc;
-      border-color: rgba(255, 255, 255, 0.3);
     }
 
     .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
@@ -302,13 +274,6 @@
 </head>
 <body>
 
-  <!-- Top Center Coordinate Search Bar -->
-  <div id="top-center-search">
-    <input type="text" id="coord-input" class="search-input" placeholder="Lat, Lng (e.g. 14.5995, 120.9842)" />
-    <button id="coord-search-btn" class="search-btn">Go</button>
-    <button id="clear-search-btn" class="clear-search-btn" title="Clear Search Pin">✕</button>
-  </div>
-
   <div id="top-right-toolbar">
     <button id="undo-point-btn" class="top-action-btn" title="Undo Last Point (Ctrl+Z)">↩ Undo Point</button>
   </div>
@@ -317,6 +282,12 @@
     <div class="panel-header">
       <h2>NSCR ROUTE STUDIO</h2>
       <span class="sub-title">Exact Node-Lock Alignment</span>
+    </div>
+
+    <!-- Integrated Search Box inside side panel -->
+    <div class="search-box">
+      <input type="text" id="coord-input" class="search-input" placeholder="Lat, Lng (e.g. 14.5995, 120.9842)" />
+      <button id="coord-search-btn" class="search-btn">Go</button>
     </div>
 
     <div class="tool-grid">
@@ -430,6 +401,7 @@
     let searchMarker = null;
 
     map.on('load', () => {
+      // Station layers
       map.addSource('station-polygons-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addLayer({
         id: 'station-roof-layer', type: 'fill', source: 'station-polygons-source',
@@ -440,6 +412,7 @@
         paint: { 'line-color': ['get', 'lineColor'], 'line-width': ['get', 'lineWidth'] }
       });
 
+      // Semi-transparent rubberband / preview line source & layer
       map.addSource('rubberband-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addLayer({
         id: 'rubberband-layer',
@@ -453,6 +426,7 @@
         }
       });
 
+      // Track layers
       map.addSource('rail-bed-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addLayer({
         id: 'rail-bed-layer', type: 'line', source: 'rail-bed-source',
@@ -482,6 +456,7 @@
         renderAll();
       }
 
+      // Mousemove for rubberband dashed preview
       map.on('mousemove', (e) => {
         currentMousePos = [e.lngLat.lng, e.lngLat.lat];
         updateRubberband();
@@ -494,30 +469,26 @@
 
       map.on('click', (e) => {
         if (isDraggingNode || !isEditingMode) return;
-        const clickPt = [parseFloat(e.lngLat.lng), parseFloat(e.lngLat.lat)];
+        const clickPt = [e.lngLat.lng, e.lngLat.lat];
 
         if (mode === 'station') {
           placeStation(clickPt);
           return;
         }
 
-        let activeLine = lines.find(r => r.id === activeLineId);
-        if (!activeLine) {
-          startNewTrack(isBranchMode ? 'Branch' : 'Main');
-          activeLine = lines.find(r => r.id === activeLineId);
-        }
+        if (!activeLineId) startNewTrack(isBranchMode ? 'Branch' : 'Main');
 
-        if (activeLine) {
-          activeLine.coordinates.push(clickPt);
-          renderAll();
-          updateRubberband();
-        }
+        const activeLine = lines.find(r => r.id === activeLineId);
+        if (!activeLine) return;
+
+        activeLine.coordinates.push(clickPt);
+        renderAll();
+        updateRubberband();
       });
 
       window.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && document.activeElement !== document.getElementById('coord-input')) {
-          finishActiveTrack();
-        }
+        if (e.target.tagName === 'INPUT') return; // Don't trigger shortcuts when typing in inputs
+        if (e.key === 'Enter') finishActiveTrack();
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
           e.preventDefault();
           undoLastPoint();
@@ -535,7 +506,7 @@
         let val2 = parseFloat(parts[1]);
 
         if (isNaN(val1) || isNaN(val2)) {
-          alert('Invalid coordinate format. Please use "Lat, Lng" or "Lng, Lat".');
+          alert('Invalid coordinates format. Use "Lat, Lng" or "Lng, Lat".');
           return;
         }
 
@@ -547,36 +518,20 @@
           lng = val1;
           lat = val2;
         } else {
-          alert('Coordinates out of valid range (-90 to 90 for Lat, -180 to 180 for Lng).');
+          alert('Coordinates out of bounds (-90 to 90 for Lat, -180 to 180 for Lng).');
           return;
         }
 
-        map.flyTo({ center: [lng, lat], zoom: 16, essential: true });
+        map.flyTo({ center: [lng, lat], zoom: 16 });
 
         if (searchMarker) searchMarker.remove();
-        
-        const popup = new maplibregl.Popup({ offset: 25 })
-          .setText(`Location: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
-
         searchMarker = new maplibregl.Marker({ color: '#ffaa00' })
           .setLngLat([lng, lat])
-          .setPopup(popup)
           .addTo(map);
-          
-        searchMarker.togglePopup();
       }
-    }
-
-    function clearSearchMarker() {
-      if (searchMarker) {
-        searchMarker.remove();
-        searchMarker = null;
-      }
-      document.getElementById('coord-input').value = '';
     }
 
     document.getElementById('coord-search-btn').addEventListener('click', handleCoordinateSearch);
-    document.getElementById('clear-search-btn').addEventListener('click', clearSearchMarker);
     document.getElementById('coord-input').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') handleCoordinateSearch();
     });
@@ -588,7 +543,7 @@
       }
 
       const activeLine = lines.find(r => r.id === activeLineId);
-      if (!activeLine || !activeLine.coordinates || activeLine.coordinates.length === 0) {
+      if (!activeLine || activeLine.coordinates.length === 0) {
         map.getSource('rubberband-source').setData({ type: 'FeatureCollection', features: [] });
         return;
       }
@@ -612,18 +567,10 @@
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          lines = (parsed.lines || []).map(line => ({
-            ...line,
-            coordinates: (line.coordinates || []).map(pt => [parseFloat(pt[0]), parseFloat(pt[1])])
-          }));
-          stations = (parsed.stations || []).map(stn => ({
-            ...stn,
-            center: [parseFloat(stn.center[0]), parseFloat(stn.center[1])]
-          }));
+          lines = parsed.lines || [];
+          stations = parsed.stations || [];
         } catch (e) {
           console.error("Failed to load saved alignment data", e);
-          lines = [];
-          stations = [];
         }
       }
     }
@@ -644,7 +591,7 @@
     function undoLastPoint() {
       if (!activeLineId) return;
       const activeLine = lines.find(r => r.id === activeLineId);
-      if (activeLine && activeLine.coordinates && activeLine.coordinates.length > 0) {
+      if (activeLine && activeLine.coordinates.length > 0) {
         activeLine.coordinates.pop();
         renderAll();
         updateRubberband();
@@ -740,7 +687,7 @@
       let calcRotation = activeStationRotation;
 
       lines.forEach(lineItem => {
-        if (!lineItem.coordinates || lineItem.coordinates.length < 2) return;
+        if (lineItem.coordinates.length < 2) return;
         const spline = buildCatmullRomRailwayPath(lineItem.coordinates, curveResolution);
         if (!spline) return;
 
@@ -800,7 +747,7 @@
     function finishActiveTrack() {
       const activeLine = lines.find(r => r.id === activeLineId);
       if (activeLine) {
-        if (!activeLine.coordinates || activeLine.coordinates.length < 2) {
+        if (activeLine.coordinates.length < 2) {
           lines = lines.filter(r => r.id !== activeLineId);
         } else {
           activeLine.isFinished = true;
@@ -879,7 +826,7 @@
       const lineFeatures = [];
 
       lines.forEach(lineItem => {
-        if (!lineItem.coordinates || lineItem.coordinates.length < 2) return;
+        if (lineItem.coordinates.length < 2) return;
 
         const mainSpline = buildCatmullRomRailwayPath(lineItem.coordinates, curveResolution);
         if (mainSpline) lineFeatures.push(mainSpline);
@@ -909,7 +856,7 @@
     }
 
     function buildCatmullRomRailwayPath(pts, samplesPerSegment = 16) {
-      if (!pts || pts.length < 2) return null;
+      if (pts.length < 2) return null;
       if (pts.length === 2) return turf.lineString(pts);
 
       const p0_ext = [2 * pts[0][0] - pts[1][0], 2 * pts[0][1] - pts[1][1]];
@@ -949,7 +896,7 @@
           const A1_y = ((t1 - t) * p0[1] + (t - t0) * p1[1]) / (t1 - t0);
 
           const A2_x = ((t2 - t) * p1[0] + (t - t1) * p2[0]) / (t2 - t1);
-          const A2_y = ((t2 - t) * p1[1] + (t - t0) * p2[0]) / (t2 - t1);
+          const A2_y = ((t2 - t) * p1[1] + (t - t1) * p2[1]) / (t2 - t1);
 
           const A3_x = ((t3 - t) * p2[0] + (t - t2) * p3[0]) / (t3 - t2);
           const A3_y = ((t3 - t) * p2[1] + (t - t2) * p3[1]) / (t3 - t2);
@@ -958,10 +905,10 @@
           const B1_y = ((t2 - t) * A1_y + (t - t0) * A2_y) / (t2 - t0);
 
           const B2_x = ((t3 - t) * A2_x + (t - t1) * A3_x) / (t3 - t1);
-          const B2_y = ((t3 - t) * A2_y + (t - t1) * B2_y) / (t3 - t1);
+          const B2_y = ((t3 - t) * A2_y + (t - t1) * A3_y) / (t3 - t1);
 
           const C_x = ((t2 - t) * B1_x + (t - t1) * B2_x) / (t2 - t1);
-          const C_y = ((t2 - t) * B1_y + (t - t1) * B2_x) / (t2 - t1);
+          const C_y = ((t2 - t) * B1_y + (t - t1) * B2_y) / (t2 - t1);
 
           pathCoords.push([C_x, C_y]);
         }
@@ -1175,7 +1122,7 @@
       kml += `    <name>NSCR Railway Alignments</name>\n`;
 
       lines.forEach(lineItem => {
-        if (!lineItem.coordinates || lineItem.coordinates.length < 2) return;
+        if (lineItem.coordinates.length < 2) return;
         const spline = buildCatmullRomRailwayPath(lineItem.coordinates, curveResolution);
         if (!spline) return;
 

@@ -22,12 +22,10 @@
 
     #map { width: 100vw; height: 100vh; }
 
-    /* Crosshair Cursor Mode */
     #map.crosshair-mode canvas {
       cursor: crosshair !important;
     }
 
-    /* Top Center Search Bar Container */
     #top-center-search {
       position: absolute;
       top: 16px;
@@ -106,7 +104,6 @@
 
     .sub-title { font-size: 11px; color: #8b949e; }
 
-    /* Search Box Styles */
     .search-input {
       flex-grow: 1;
       background: rgba(0, 0, 0, 0.4);
@@ -497,21 +494,24 @@
 
       map.on('click', (e) => {
         if (isDraggingNode || !isEditingMode) return;
-        const clickPt = [e.lngLat.lng, e.lngLat.lat];
+        const clickPt = [parseFloat(e.lngLat.lng), parseFloat(e.lngLat.lat)];
 
         if (mode === 'station') {
           placeStation(clickPt);
           return;
         }
 
-        if (!activeLineId) startNewTrack(isBranchMode ? 'Branch' : 'Main');
+        let activeLine = lines.find(r => r.id === activeLineId);
+        if (!activeLine) {
+          startNewTrack(isBranchMode ? 'Branch' : 'Main');
+          activeLine = lines.find(r => r.id === activeLineId);
+        }
 
-        const activeLine = lines.find(r => r.id === activeLineId);
-        if (!activeLine) return;
-
-        activeLine.coordinates.push(clickPt);
-        renderAll();
-        updateRubberband();
+        if (activeLine) {
+          activeLine.coordinates.push(clickPt);
+          renderAll();
+          updateRubberband();
+        }
       });
 
       window.addEventListener('keydown', (e) => {
@@ -525,7 +525,6 @@
       });
     });
 
-    /* Coordinate Search & Navigation Logic */
     function handleCoordinateSearch() {
       const input = document.getElementById('coord-input').value.trim();
       if (!input) return;
@@ -541,7 +540,6 @@
         }
 
         let lat, lng;
-        // Check for standard Latitude (-90 to 90) vs Longitude (-180 to 180) ranges
         if (Math.abs(val1) <= 90 && Math.abs(val2) <= 180) {
           lat = val1;
           lng = val2;
@@ -590,7 +588,7 @@
       }
 
       const activeLine = lines.find(r => r.id === activeLineId);
-      if (!activeLine || activeLine.coordinates.length === 0) {
+      if (!activeLine || !activeLine.coordinates || activeLine.coordinates.length === 0) {
         map.getSource('rubberband-source').setData({ type: 'FeatureCollection', features: [] });
         return;
       }
@@ -614,10 +612,18 @@
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          lines = parsed.lines || [];
-          stations = parsed.stations || [];
+          lines = (parsed.lines || []).map(line => ({
+            ...line,
+            coordinates: (line.coordinates || []).map(pt => [parseFloat(pt[0]), parseFloat(pt[1])])
+          }));
+          stations = (parsed.stations || []).map(stn => ({
+            ...stn,
+            center: [parseFloat(stn.center[0]), parseFloat(stn.center[1])]
+          }));
         } catch (e) {
           console.error("Failed to load saved alignment data", e);
+          lines = [];
+          stations = [];
         }
       }
     }
@@ -638,7 +644,7 @@
     function undoLastPoint() {
       if (!activeLineId) return;
       const activeLine = lines.find(r => r.id === activeLineId);
-      if (activeLine && activeLine.coordinates.length > 0) {
+      if (activeLine && activeLine.coordinates && activeLine.coordinates.length > 0) {
         activeLine.coordinates.pop();
         renderAll();
         updateRubberband();
@@ -734,7 +740,7 @@
       let calcRotation = activeStationRotation;
 
       lines.forEach(lineItem => {
-        if (lineItem.coordinates.length < 2) return;
+        if (!lineItem.coordinates || lineItem.coordinates.length < 2) return;
         const spline = buildCatmullRomRailwayPath(lineItem.coordinates, curveResolution);
         if (!spline) return;
 
@@ -794,7 +800,7 @@
     function finishActiveTrack() {
       const activeLine = lines.find(r => r.id === activeLineId);
       if (activeLine) {
-        if (activeLine.coordinates.length < 2) {
+        if (!activeLine.coordinates || activeLine.coordinates.length < 2) {
           lines = lines.filter(r => r.id !== activeLineId);
         } else {
           activeLine.isFinished = true;
@@ -873,7 +879,7 @@
       const lineFeatures = [];
 
       lines.forEach(lineItem => {
-        if (lineItem.coordinates.length < 2) return;
+        if (!lineItem.coordinates || lineItem.coordinates.length < 2) return;
 
         const mainSpline = buildCatmullRomRailwayPath(lineItem.coordinates, curveResolution);
         if (mainSpline) lineFeatures.push(mainSpline);
@@ -903,7 +909,7 @@
     }
 
     function buildCatmullRomRailwayPath(pts, samplesPerSegment = 16) {
-      if (pts.length < 2) return null;
+      if (!pts || pts.length < 2) return null;
       if (pts.length === 2) return turf.lineString(pts);
 
       const p0_ext = [2 * pts[0][0] - pts[1][0], 2 * pts[0][1] - pts[1][1]];
@@ -1169,7 +1175,7 @@
       kml += `    <name>NSCR Railway Alignments</name>\n`;
 
       lines.forEach(lineItem => {
-        if (lineItem.coordinates.length < 2) return;
+        if (!lineItem.coordinates || lineItem.coordinates.length < 2) return;
         const spline = buildCatmullRomRailwayPath(lineItem.coordinates, curveResolution);
         if (!spline) return;
 

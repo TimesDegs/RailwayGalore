@@ -10,19 +10,20 @@
   <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
 
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
     body, html {
       margin: 0; padding: 0;
       width: 100%; height: 100%;
       overflow: hidden;
-      font-family: 'Inter', sans-serif;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
       background: #090c10;
+      color: #f0f6fc;
+      user-select: none;
     }
 
     #map { width: 100vw; height: 100vh; }
 
-    /* Crosshair Cursor Mode */
     #map.crosshair-mode canvas {
       cursor: crosshair !important;
     }
@@ -32,21 +33,30 @@
       top: 16px; left: 16px;
       width: 320px;
       max-height: calc(100vh - 32px);
-      background: rgba(13, 17, 23, 0.94);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      color: #f0f6fc;
-      padding: 16px;
-      border-radius: 14px;
+      
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03)), rgba(12, 16, 24, 0.45);
+      backdrop-filter: blur(28px) saturate(210%);
+      -webkit-backdrop-filter: blur(28px) saturate(210%);
+      
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-top: 1px solid rgba(255, 255, 255, 0.35);
+      border-left: 1px solid rgba(255, 255, 255, 0.35);
+      
+      padding: 20px;
+      border-radius: 20px;
       box-sizing: border-box;
       z-index: 100;
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
-      backdrop-filter: blur(16px);
+      
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 14px;
       overflow-y: auto;
-      transition: transform 0.3s ease, opacity 0.3s ease;
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
     }
+
+    #side-panel::-webkit-scrollbar { display: none; }
 
     #side-panel.collapsed {
       transform: translateX(-350px);
@@ -55,24 +65,37 @@
     }
 
     #toggle-sidebar-btn {
-      position: absolute;
-      top: 16px; left: 16px;
       z-index: 101;
-      background: rgba(13, 17, 23, 0.90);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05)), rgba(12, 16, 24, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-top: 1px solid rgba(255, 255, 255, 0.4);
+      border-left: 1px solid rgba(255, 255, 255, 0.4);
       color: #f0f6fc;
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-size: 12px;
-      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
       cursor: pointer;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     #toggle-sidebar-btn:hover {
-      border-color: #ffaa00;
+      border-color: rgba(255, 170, 0, 0.6);
       color: #ffaa00;
+      box-shadow: 0 10px 25px rgba(255, 170, 0, 0.2);
+    }
+
+    #toggle-sidebar-btn.standalone {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      padding: 9px 16px;
+      border-radius: 12px;
+      font-size: 12px;
     }
 
     #top-center-search {
@@ -95,17 +118,19 @@
     }
 
     .top-action-btn {
-      background: rgba(13, 17, 23, 0.90);
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03)), rgba(12, 16, 24, 0.5);
       border: 1px solid rgba(255, 255, 255, 0.2);
+      border-top: 1px solid rgba(255, 255, 255, 0.35);
       color: #f0f6fc;
-      padding: 8px 14px;
-      border-radius: 8px;
+      padding: 9px 16px;
+      border-radius: 12px;
       font-size: 12px;
       font-weight: 600;
       cursor: pointer;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-      backdrop-filter: blur(10px);
-      transition: all 0.2s ease;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
       display: flex;
       align-items: center;
       gap: 6px;
@@ -115,145 +140,418 @@
       background: rgba(255, 170, 0, 0.2);
       border-color: #ffaa00;
       color: #ffaa00;
+      box-shadow: 0 10px 25px rgba(255, 170, 0, 0.25);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
     }
 
     .panel-header h2 {
-      font-size: 15px; font-weight: 700;
-      letter-spacing: 1px; margin: 0;
+      font-size: 13px; font-weight: 800;
+      letter-spacing: 1.5px; margin: 0;
       color: #ffaa00;
+      text-transform: uppercase;
+      text-shadow: 0 0 12px rgba(255, 170, 0, 0.3);
     }
 
-    .sub-title { font-size: 11px; color: #8b949e; }
+    .sub-title { font-size: 11px; color: #9da7b3; display: block; margin-top: 2px; font-weight: 500; }
 
-    .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .tool-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5px;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 4px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
+    }
 
     .tool-btn {
-      padding: 8px;
-      background: rgba(255, 255, 255, 0.05);
-      color: #c9d1d9;
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 8px;
+      padding: 8px 10px;
+      background: transparent;
+      color: #9da7b3;
+      border: none;
+      border-radius: 9px;
       cursor: pointer;
       font-weight: 600; font-size: 11px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
       display: flex; align-items: center; justify-content: center; gap: 6px;
+      transition: all 0.2s ease;
     }
 
+    .tool-btn:hover { color: #f0f6fc; }
+
     .tool-btn.active {
-      background: rgba(255, 170, 0, 0.2);
-      color: #ffaa00;
-      border-color: #ffaa00;
+      background: linear-gradient(135deg, rgba(255, 170, 0, 0.3), rgba(255, 170, 0, 0.15));
+      color: #ffc44d;
+      border: 1px solid rgba(255, 170, 0, 0.4);
+      box-shadow: 0 4px 12px rgba(255, 170, 0, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.3);
     }
 
     .toggle-row {
       display: flex; justify-content: space-between; align-items: center;
-      background: rgba(255, 255, 255, 0.03);
-      padding: 8px 12px; border-radius: 8px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      font-size: 11px;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 9px 14px; border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 11px; font-weight: 600;
     }
 
-    .switch { position: relative; display: inline-block; width: 36px; height: 18px; }
+    .switch { position: relative; display: inline-block; width: 36px; height: 20px; }
     .switch input { opacity: 0; width: 0; height: 0; }
-    .slider {
+    .slider-toggle {
       position: absolute; cursor: pointer;
       top: 0; left: 0; right: 0; bottom: 0;
-      background-color: #30363d; border-radius: 20px; transition: .3s;
+      background-color: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 20px; transition: .25s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    .slider:before {
+    .slider-toggle:before {
       position: absolute; content: "";
       height: 12px; width: 12px; left: 3px; bottom: 3px;
-      background-color: white; border-radius: 50%; transition: .3s;
+      background-color: #f0f6fc; border-radius: 50%;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+      transition: .25s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    input:checked + .slider { background-color: #d97706; }
-    input:checked + .slider:before { transform: translateX(18px); }
+    input:checked + .slider-toggle { background-color: #ffaa00; border-color: #ffaa00; }
+    input:checked + .slider-toggle:before { transform: translateX(16px); background-color: #0d1117; }
 
     .control-group { display: flex; flex-direction: column; gap: 6px; }
-    .label-row { display: flex; justify-content: space-between; font-size: 11px; color: #c9d1d9; }
-    .label-row strong { color: #ffaa00; }
+    .label-row { display: flex; justify-content: space-between; font-size: 11px; color: #9da7b3; font-weight: 500; }
+    .label-row strong { color: #ffaa00; font-weight: 700; }
 
-    input[type="range"] { width: 100%; accent-color: #ffaa00; cursor: pointer; }
-
-    .primary-btn {
-      width: 100%; padding: 10px;
-      background: #d97706; color: #ffffff;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px; cursor: pointer;
-      font-weight: 600; font-size: 12px;
+    input[type="range"] {
+      width: 100%;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 3px;
+      accent-color: #ffaa00;
+      cursor: pointer;
+      outline: none;
     }
 
     .done-btn {
       width: 100%; padding: 10px;
-      background: #238636; color: #ffffff;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px; cursor: pointer;
-      font-weight: 600; font-size: 12px;
+      background: linear-gradient(135deg, rgba(35, 134, 54, 0.35), rgba(35, 134, 54, 0.15));
+      color: #4ade80;
+      border: 1px solid rgba(74, 222, 128, 0.4);
+      border-top: 1px solid rgba(74, 222, 128, 0.6);
+      border-radius: 12px; cursor: pointer;
+      font-weight: 700; font-size: 12px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      box-shadow: 0 4px 15px rgba(35, 134, 54, 0.2);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .done-btn:hover {
+      background: linear-gradient(135deg, rgba(35, 134, 54, 0.5), rgba(35, 134, 54, 0.25));
+      box-shadow: 0 6px 20px rgba(35, 134, 54, 0.35);
+      color: #86efac;
     }
 
     .kml-btn {
       width: 100%; padding: 10px;
-      background: #1f6beb; color: #ffffff;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px; cursor: pointer;
-      font-weight: 600; font-size: 12px;
+      background: linear-gradient(135deg, rgba(31, 107, 235, 0.25), rgba(31, 107, 235, 0.1));
+      color: #60a5fa;
+      border: 1px solid rgba(96, 165, 250, 0.35);
+      border-top: 1px solid rgba(96, 165, 250, 0.5);
+      border-radius: 12px; cursor: pointer;
+      font-weight: 700; font-size: 12px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
       display: flex; align-items: center; justify-content: center; gap: 6px;
+      box-shadow: 0 4px 15px rgba(31, 107, 235, 0.2);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .kml-btn:hover {
+      background: linear-gradient(135deg, rgba(31, 107, 235, 0.4), rgba(31, 107, 235, 0.2));
+      box-shadow: 0 6px 20px rgba(31, 107, 235, 0.35);
+      color: #93c5fd;
     }
 
     .stats-card {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 8px; padding: 10px;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px; padding: 10px 12px;
       display: flex; flex-direction: column; gap: 4px;
       font-size: 11px;
     }
 
     .stat-row { display: flex; justify-content: space-between; align-items: center; }
-    .stat-label { color: #8b949e; }
-    .stat-value { font-weight: 600; color: #f0f6fc; }
+    .stat-label { color: #9da7b3; font-weight: 500; }
+    .stat-value { font-weight: 700; color: #f0f6fc; }
 
-    .finished-list-section { display: flex; flex-direction: column; gap: 6px; }
-    .finished-list-section label { font-size: 11px; color: #c9d1d9; }
+    .finished-list-section { display: flex; flex-direction: column; gap: 8px; }
+    .finished-list-section label { font-size: 10px; color: #9da7b3; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700; }
 
-    .roads-list { max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+    .roads-list { max-height: 140px; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; }
     .road-item {
       display: flex; justify-content: space-between; align-items: center;
-      background: rgba(255, 255, 255, 0.05); padding: 6px 10px;
-      border-radius: 6px; font-size: 11px; cursor: pointer;
-      border: 1px solid transparent; gap: 6px;
+      background: rgba(255, 255, 255, 0.05); padding: 7px 10px;
+      border-radius: 10px; font-size: 11px; cursor: pointer;
+      border: 1px solid rgba(255, 255, 255, 0.08); gap: 6px;
+      transition: all 0.2s ease;
     }
-    .road-item.selected { border: 1px solid #ffaa00; background: rgba(255, 170, 0, 0.1); }
+    .road-item:hover { background: rgba(255, 255, 255, 0.09); border-color: rgba(255, 255, 255, 0.2); }
+    .road-item.selected { border-color: rgba(255, 170, 0, 0.6); background: rgba(255, 170, 0, 0.12); }
 
     .item-title-container { display: flex; align-items: center; gap: 6px; flex-grow: 1; min-width: 0; }
     
     .rename-input {
-      background: rgba(0, 0, 0, 0.5);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: transparent;
+      border: none;
       color: #f0f6fc;
       border-radius: 4px;
-      padding: 2px 6px;
+      padding: 2px 4px;
       font-size: 11px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-weight: 600;
       width: 100%;
       outline: none;
     }
-    .rename-input:focus { border-color: #ffaa00; }
+    .rename-input:focus { background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 170, 0, 0.4); }
 
-    .action-icon-btn { background: none; border: none; color: #8b949e; cursor: pointer; font-size: 11px; }
-    .action-icon-btn:hover { color: #ff453a; }
+    .action-icon-btn { background: none; border: none; color: #9da7b3; cursor: pointer; font-size: 11px; padding: 2px 4px; border-radius: 4px; }
+    .action-icon-btn:hover { color: #ff453a; background: rgba(255, 69, 58, 0.15); }
+    .action-icon-btn.edit-custom-btn:hover { color: #ffaa00; background: rgba(255, 170, 0, 0.15); }
 
     #clear-btn {
-      padding: 8px;
-      background: rgba(255, 59, 48, 0.15); color: #ff453a;
-      border: 1px solid rgba(255, 59, 48, 0.3);
-      border-radius: 8px; cursor: pointer;
-      font-weight: 600; font-size: 11px;
+      padding: 9px;
+      background: linear-gradient(135deg, rgba(255, 59, 48, 0.2), rgba(255, 59, 48, 0.08));
+      color: #f87171;
+      border: 1px solid rgba(248, 113, 113, 0.3);
+      border-radius: 12px; cursor: pointer;
+      font-weight: 700; font-size: 11px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      transition: all 0.2s ease;
     }
+    #clear-btn:hover { background: rgba(255, 59, 48, 0.3); border-color: #f87171; }
 
     #reset-storage-btn {
-      padding: 6px;
-      background: transparent; color: #8b949e;
+      padding: 4px;
+      background: transparent; color: #808a98;
       border: none; cursor: pointer;
-      font-size: 10px; text-decoration: underline;
+      font-size: 10px; font-weight: 500; text-decoration: underline;
       align-self: center;
+      transition: color 0.2s ease;
     }
+    #reset-storage-btn:hover { color: #f0f6fc; }
+
+    .spawn-sidebar-section {
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .spawn-sidebar-section label {
+      font-size: 10px; color: #9da7b3; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700;
+    }
+    .train-spawn-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, rgba(255, 170, 0, 0.15), rgba(255, 255, 255, 0.03));
+      border: 1px solid rgba(255, 170, 0, 0.35);
+      padding: 8px 12px;
+      border-radius: 10px;
+      cursor: grab;
+      transition: all 0.2s ease;
+    }
+    .train-spawn-card:active {
+      cursor: grabbing;
+      transform: scale(0.98);
+    }
+    .train-icon-preview {
+      width: 16px;
+      height: 16px;
+      background: #ffaa00;
+      border: 2px solid #ffffff;
+      border-radius: 50%;
+      box-shadow: 0 0 10px rgba(255,170,0,0.8);
+      position: relative;
+    }
+    .train-spawn-info {
+      display: flex;
+      flex-direction: column;
+      font-size: 11px;
+    }
+    .train-spawn-info strong { color: #ffaa00; font-weight: 700; }
+    .train-spawn-info span { color: #9da7b3; font-size: 9px; }
+
+    #drag-ghost {
+      position: fixed;
+      pointer-events: none;
+      z-index: 9999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      background: #ffaa00;
+      border: 2px solid #ffffff;
+      border-radius: 50%;
+      box-shadow: 0 0 15px rgba(255,170,0,0.9);
+    }
+
+    #line-custom-modal, #train-custom-modal {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(5, 7, 10, 0.6);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+    #line-custom-modal.active, #train-custom-modal.active {
+      display: flex;
+      opacity: 1;
+    }
+    .liquid-glass-window {
+      width: 280px;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.04)), rgba(14, 19, 28, 0.75);
+      backdrop-filter: blur(32px) saturate(220%);
+      -webkit-backdrop-filter: blur(32px) saturate(220%);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-top: 1px solid rgba(255, 255, 255, 0.4);
+      border-left: 1px solid rgba(255, 255, 255, 0.4);
+      border-radius: 22px;
+      padding: 18px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.4);
+      animation: modalScaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes modalScaleIn {
+      0% { transform: scale(0.9); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .lc-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      padding-bottom: 10px;
+    }
+    .lc-title-input {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      color: #f0f6fc;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      width: 100%;
+      outline: none;
+    }
+    .lc-title-input:focus { border-color: #ffaa00; background: rgba(0,0,0,0.5); }
+    
+    .lc-swatch-picker {
+      display: flex;
+      gap: 5px;
+    }
+    .color-swatch {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform 0.2s ease;
+    }
+    .color-swatch:hover { transform: scale(1.15); }
+    .color-swatch.selected { border-color: #ffffff; box-shadow: 0 0 8px rgba(255,255,255,0.8); }
+
+    .lc-section-title {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #ffaa00;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+    .lc-field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      font-size: 11px;
+    }
+    .lc-field-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #9da7b3;
+    }
+    .lc-number-input {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 6px;
+      color: #f0f6fc;
+      padding: 3px 6px;
+      font-size: 11px;
+      width: 50px;
+      text-align: center;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      outline: none;
+    }
+    .lc-number-input:focus { border-color: #ffaa00; }
+    
+    .lc-select {
+      background: rgba(0,0,0,0.4);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 8px;
+      color: #f0f6fc;
+      padding: 6px 8px;
+      font-size: 11px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      outline: none;
+      cursor: pointer;
+    }
+    .lc-select option { background: #0d1117; color: #f0f6fc; }
+
+    .lc-close-btn {
+      width: 100%;
+      padding: 8px;
+      background: linear-gradient(135deg, rgba(255, 170, 0, 0.3), rgba(255, 170, 0, 0.12));
+      color: #ffc44d;
+      border: 1px solid rgba(255, 170, 0, 0.4);
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 11px;
+      cursor: pointer;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      transition: all 0.2s ease;
+    }
+    .lc-close-btn:hover { background: rgba(255, 170, 0, 0.4); color: #ffffff; }
+
+    .train-delete-btn {
+      width: 100%;
+      padding: 8px;
+      background: linear-gradient(135deg, rgba(255, 59, 48, 0.3), rgba(255, 59, 48, 0.12));
+      color: #f87171;
+      border: 1px solid rgba(248, 113, 113, 0.4);
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 11px;
+      cursor: pointer;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      transition: all 0.2s ease;
+      margin-top: 4px;
+    }
+    .train-delete-btn:hover { background: rgba(255, 59, 48, 0.4); color: #ffffff; }
 
     .custom-node-marker {
       width: 12px; height: 12px;
@@ -261,7 +559,7 @@
       border: 2px solid #d97706;
       border-radius: 50%;
       cursor: grab;
-      box-shadow: 0 0 6px rgba(0,0,0,0.8);
+      box-shadow: 0 0 8px rgba(0,0,0,0.8);
       pointer-events: auto !important;
     }
 
@@ -273,49 +571,225 @@
       justify-content: center;
       user-select: none;
     }
+
+    .train-marker {
+      cursor: pointer;
+      pointer-events: auto !important;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      position: relative;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6));
+    }
+    .train-pulse-dot {
+      width: 10px;
+      height: 10px;
+      background: #ffaa00;
+      border: 2px solid #ffffff;
+      border-radius: 50%;
+      position: relative;
+      z-index: 2;
+      box-shadow: 0 0 8px rgba(255,170,0,0.9);
+    }
+    .train-pulse-ring {
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(255, 170, 0, 0.45);
+      animation: trainPulse 1.6s infinite cubic-bezier(0.215, 0.61, 0.355, 1);
+      z-index: 1;
+      will-change: transform, opacity;
+      transform: translateZ(0);
+    }
+    @keyframes trainPulse {
+      0% { transform: scale(0.5) translateZ(0); opacity: 0.9; }
+      100% { transform: scale(2.2) translateZ(0); opacity: 0; }
+    }
+
+    .chainage-pill {
+      background: rgba(12, 16, 24, 0.85);
+      border: 1px solid rgba(255, 170, 0, 0.5);
+      color: #ffaa00;
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-size: 9px;
+      font-weight: 700;
+      font-family: monospace;
+      white-space: nowrap;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+      pointer-events: none;
+    }
     
     .search-box {
       display: flex;
       gap: 6px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-      backdrop-filter: blur(10px);
-      border-radius: 8px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 12px;
     }
 
     .search-input {
       flex-grow: 1;
-      background: rgba(13, 17, 23, 0.90);
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03)), rgba(12, 16, 24, 0.5);
       border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 8px;
+      border-top: 1px solid rgba(255, 255, 255, 0.35);
+      border-radius: 12px;
       color: #f0f6fc;
-      padding: 8px 10px;
+      padding: 9px 14px;
       font-size: 11px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-weight: 500;
       outline: none;
     }
 
-    .search-input:focus { 
-      border-color: #ffaa00; 
-    }
+    .search-input:focus { border-color: #ffaa00; }
 
     .search-btn {
-      background: rgba(13, 17, 23, 0.90);
-      border: 1px solid #ffaa00;
+      background: linear-gradient(135deg, rgba(255, 170, 0, 0.25), rgba(255, 170, 0, 0.1));
+      border: 1px solid rgba(255, 170, 0, 0.4);
       color: #ffaa00;
-      border-radius: 8px;
-      padding: 0 12px;
+      border-radius: 12px;
+      padding: 0 16px;
       cursor: pointer;
-      font-weight: 600;
+      font-weight: 700;
       font-size: 11px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      transition: all 0.2s ease;
     }
 
-    .search-btn:hover { 
-      background: rgba(255, 170, 0, 0.3); 
+    .search-btn:hover { background: rgba(255, 170, 0, 0.3); }
+
+    .modern-search-pin {
+      width: 32px;
+      height: 32px;
+      position: relative;
+      cursor: pointer;
+      pointer-events: auto !important;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
+    .modern-search-pin:hover { transform: scale(1.15); }
+    .modern-search-pin .pulse-ring {
+      position: absolute;
+      width: 100%; height: 100%;
+      border-radius: 50%;
+      background: rgba(255, 170, 0, 0.4);
+      animation: pinPulse 2s infinite cubic-bezier(0.215, 0.61, 0.355, 1);
+    }
+    .modern-search-pin .pin-body {
+      width: 24px; height: 24px;
+      background: linear-gradient(135deg, rgba(255, 170, 0, 0.9), rgba(255, 100, 0, 0.7));
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1.5px solid rgba(255, 255, 255, 0.8);
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      box-shadow: 0 0 15px rgba(255, 170, 0, 0.6), 0 8px 16px rgba(0, 0, 0, 0.4);
+      display: flex; align-items: center; justify-content: center; z-index: 1;
+    }
+    .modern-search-pin .pin-body::after {
+      content: '';
+      width: 8px; height: 8px; background: #ffffff; border-radius: 50%;
+      box-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
+    }
+    @keyframes pinPulse {
+      0% { transform: scale(0.6); opacity: 0.9; }
+      100% { transform: scale(2.2); opacity: 0; }
+    }
+
+    #travel-time-card {
+      display: none;
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(12, 16, 24, 0.6));
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      border-radius: 12px;
+      padding: 12px;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 11px;
+      box-shadow: 0 4px 20px rgba(16, 185, 129, 0.15);
+    }
+    #travel-time-card.active { display: flex; }
   </style>
 </head>
 <body>
 
-  <button id="toggle-sidebar-btn">☰ Panel</button>
+  <div id="drag-ghost">
+    <div class="train-pulse-dot" style="width: 10px; height: 10px;"></div>
+  </div>
+
+  <!-- Line Customization Modal -->
+  <div id="line-custom-modal">
+    <div class="liquid-glass-window">
+      <div class="lc-header">
+        <input type="text" id="lc-name-input" class="lc-title-input" placeholder="Line Name" />
+        <div class="lc-swatch-picker" id="lc-swatch-picker">
+          <div class="color-swatch selected" style="background: #ffaa00;" data-color="#ffaa00"></div>
+          <div class="color-swatch" style="background: #34d399;" data-color="#34d399"></div>
+          <div class="color-swatch" style="background: #60a5fa;" data-color="#60a5fa"></div>
+          <div class="color-swatch" style="background: #f472b6;" data-color="#f472b6"></div>
+          <div class="color-swatch" style="background: #a78bfa;" data-color="#a78bfa"></div>
+        </div>
+      </div>
+
+      <div class="lc-section-title">Line Identity & Appearance</div>
+      <div class="lc-field-group">
+        <div class="lc-field-row">
+          <span>Route Theme Color</span>
+          <span id="lc-color-val" style="font-family: monospace; color: #ffaa00;">#ffaa00</span>
+        </div>
+      </div>
+
+      <div class="lc-section-title">Performance & Operations</div>
+      <div class="lc-field-group">
+        <div class="lc-field-row">
+          <span>Max Rail Speed (km/h)</span>
+          <input type="number" id="lc-max-speed" class="lc-number-input" min="40" max="350" value="160">
+        </div>
+        <div class="slider-container" style="display:flex; flex-direction:column; gap:4px;">
+          <input type="range" id="lc-speed-slider" min="40" max="350" value="160">
+        </div>
+        <div class="lc-field-row" style="margin-top: 4px;">
+          <span>Priority Level</span>
+          <select id="lc-priority" class="lc-select">
+            <option value="Standard">Standard</option>
+            <option value="High">High</option>
+            <option value="Express">Express</option>
+          </select>
+        </div>
+      </div>
+
+      <button id="lc-close-btn" class="lc-close-btn">Apply & Close</button>
+    </div>
+  </div>
+
+  <!-- Train Settings / Speed Adjustment Modal -->
+  <div id="train-custom-modal">
+    <div class="liquid-glass-window">
+      <div class="lc-header">
+        <span style="font-weight: 800; color: #ffaa00; font-size: 13px;">TRAIN PROPERTIES</span>
+      </div>
+
+      <div class="lc-section-title">Operations & Speed</div>
+      <div class="lc-field-group">
+        <div class="lc-field-row">
+          <span>Train Speed (km/s)</span>
+          <input type="number" id="tc-speed-input" class="lc-number-input" step="0.01" min="0.01" max="0.5" value="0.04">
+        </div>
+        <div class="slider-container" style="display:flex; flex-direction:column; gap:4px;">
+          <input type="range" id="tc-speed-slider" min="0.01" max="0.5" step="0.01" value="0.04">
+        </div>
+      </div>
+
+      <button id="tc-close-btn" class="lc-close-btn">Apply & Close</button>
+      <button id="tc-delete-btn" class="train-delete-btn">🗑️ Delete Train</button>
+    </div>
+  </div>
 
   <div id="top-center-search" class="search-box">
    <input type="text" id="coord-input" class="search-input" placeholder="Lat, Lng (e.g. 14.5995, 120.9842)" />
@@ -328,22 +802,71 @@
 
   <div id="side-panel">
     <div class="panel-header">
-      <h2>NSCR ROUTE STUDIO</h2>
-      <span class="sub-title">Exact Node-Lock Alignment</span>
+      <div>
+        <h2>NSCR ROUTE STUDIO</h2>
+        <span class="sub-title">Exact Node-Lock Alignment</span>
+      </div>
+      <button id="toggle-sidebar-btn">☰ Panel</button>
+    </div>
+
+    <div class="spawn-sidebar-section">
+      <label>Train Spawner Tool</label>
+      <div id="train-spawn-dragger" class="train-spawn-card" draggable="true" title="Drag onto a rail line with at least two stations">
+        <div class="train-icon-preview"></div>
+        <div class="train-spawn-info">
+          <strong>Drag Train (Pulse)</strong>
+          <span>Drop onto track (requires 2+ stations)</span>
+        </div>
+      </div>
     </div>
 
     <div class="tool-grid">
       <button id="main-road-btn" class="tool-btn active">🚆 Main Line</button>
       <button id="spur-road-btn" class="tool-btn">🔀 Branch Line</button>
     </div>
-    <button id="station-tool-btn" class="tool-btn" style="width: 100%;">🚉 Place Station</button>
+    <button id="station-tool-btn" class="tool-btn" style="width: 100%; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);">🚉 Place Station</button>
 
     <div class="toggle-row">
       <span id="dual-label">Double Track</span>
       <label class="switch">
         <input type="checkbox" id="mirror-toggle">
-        <span class="slider"></span>
+        <span class="slider-toggle"></span>
       </label>
+    </div>
+
+    <div class="toggle-row" style="border-color: rgba(255, 170, 0, 0.3); background: rgba(255, 170, 0, 0.05);">
+      <span style="color: #ffaa00;">⚡ Speed Check Mode</span>
+      <label class="switch">
+        <input type="checkbox" id="speed-check-toggle">
+        <span class="slider-toggle"></span>
+      </label>
+    </div>
+
+    <div class="toggle-row" style="border-color: rgba(96, 165, 250, 0.3); background: rgba(96, 165, 250, 0.05);">
+      <span style="color: #60a5fa;">📏 Kilometrage (Chainage)</span>
+      <label class="switch">
+        <input type="checkbox" id="chainage-toggle">
+        <span class="slider-toggle"></span>
+      </label>
+    </div>
+
+    <div class="toggle-row" style="border-color: rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.05);">
+      <span style="color: #34d399;">⏱️ Station Travel Time</span>
+      <label class="switch">
+        <input type="checkbox" id="travel-time-toggle">
+        <span class="slider-toggle"></span>
+      </label>
+    </div>
+
+    <div id="travel-time-card">
+      <div style="font-weight: 700; color: #34d399; font-size: 12px; display: flex; justify-content: space-between; align-items: center;">
+        <span>Journey Estimator</span>
+        <button id="reset-travel-btn" style="background: rgba(255,255,255,0.1); border: none; color: #f0f6fc; border-radius: 4px; padding: 2px 6px; font-size: 9px; cursor: pointer;">Reset Selection</button>
+      </div>
+      <div class="stat-row"><span class="stat-label">Origin (Station X):</span><span class="stat-value" id="tt-origin" style="color: #fbbf24;">Select Station...</span></div>
+      <div class="stat-row"><span class="stat-label">Dest (Station Y):</span><span class="stat-value" id="tt-dest" style="color: #fbbf24;">Select Station...</span></div>
+      <div class="stat-row"><span class="stat-label">Track Distance:</span><span class="stat-value" id="tt-dist">-</span></div>
+      <div class="stat-row"><span class="stat-label">Est. Travel Time:</span><span class="stat-value" id="tt-time" style="color: #34d399;">-</span></div>
     </div>
 
     <div class="control-group">
@@ -370,15 +893,6 @@
       <input type="range" id="station-rotation" min="0" max="359" value="0">
     </div>
 
-    <div class="control-group">
-      <div class="label-row">
-        <span>Curve Resolution</span>
-        <strong id="tension-val">16 pts</strong>
-      </div>
-      <input type="range" id="curve-tension" min="4" max="32" value="16">
-    </div>
-
-    <button id="finish-btn" class="primary-btn">Finish Segment [Enter]</button>
     <button id="done-editing-btn" class="done-btn">✔ Done Editing Alignment</button>
     <button id="export-kml-btn" class="kml-btn">🗺️ Export to KML</button>
 
@@ -401,7 +915,8 @@
   <div id="map" class="crosshair-mode"></div>
 
   <script>
-    const STORAGE_KEY = 'nscr_route_studio_save_v1';
+    const STORAGE_KEY = 'nscr_route_studio_save_v6';
+    const MAX_CURVE_RESOLUTION = 64;
 
     const map = new maplibregl.Map({
       container: 'map',
@@ -410,11 +925,29 @@
         sources: {
           'satellite-tiles': {
             type: 'raster',
-            tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+            tiles: [
+              'https://mt0.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+              'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+              'https://mt2.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+              'https://mt3.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'
+            ],
+            tileSize: 256
+          },
+          'neutral-dark-labels': {
+            type: 'raster',
+            tiles: [
+              'https://a.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}@2x.png',
+              'https://b.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}@2x.png',
+              'https://c.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}@2x.png',
+              'https://d.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}@2x.png'
+            ],
             tileSize: 256
           }
         },
-        layers: [{ id: 'satellite-layer', type: 'raster', source: 'satellite-tiles' }]
+        layers: [
+          { id: 'satellite-layer', type: 'raster', source: 'satellite-tiles', minzoom: 0, maxzoom: 20 },
+          { id: 'neutral-labels-layer', type: 'raster', source: 'neutral-dark-labels', minzoom: 0, maxzoom: 20 }
+        ]
       },
       center: [120.9842, 14.5995],
       zoom: 14
@@ -425,73 +958,372 @@
     let mode = 'track'; 
     let lines = [];
     let stations = [];
+    let trains = [];
+
+    let lineCache = new Map();
 
     let activeLineId = null;
     let activeStationId = null;
+    let customizingLineId = null;
+    let customizingTrainId = null;
 
     let activeMarkers = [];
+    let chainageMarkers = [];
+    let trainMarkers = [];
     let isDraggingNode = false;
 
     let isBranchMode = false;
-    let curveResolution = 16;
     let isEditingMode = true;
+    let isSpeedCheckActive = false;
+    let isChainageActive = false;
+    let isTravelTimeActive = false;
+
+    let travelOriginStation = null;
+    let travelDestStation = null;
 
     let activeStationLength = 210;
     let activeStationRotation = 0;
-
     let currentMousePos = null;
 
-    document.getElementById('toggle-sidebar-btn').addEventListener('click', () => {
-      document.getElementById('side-panel').classList.toggle('collapsed');
+    let isDraggingTrain = false;
+    const dragGhost = document.getElementById('drag-ghost');
+
+    const toggleBtn = document.getElementById('toggle-sidebar-btn');
+    const sidePanel = document.getElementById('side-panel');
+    const panelHeader = document.querySelector('.panel-header');
+
+    toggleBtn.addEventListener('click', () => {
+      sidePanel.classList.toggle('collapsed');
+      if (sidePanel.classList.contains('collapsed')) {
+        document.body.appendChild(toggleBtn);
+        toggleBtn.classList.add('standalone');
+      } else {
+        panelHeader.appendChild(toggleBtn);
+        toggleBtn.classList.remove('standalone');
+      }
     });
 
-    map.on('load', () => {
-      // Station layers
-      map.addSource('station-polygons-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-      map.addLayer({
-        id: 'station-roof-layer', type: 'fill', source: 'station-polygons-source',
-        paint: { 'fill-color': ['get', 'color'], 'fill-opacity': ['get', 'opacity'] }
-      });
-      map.addLayer({
-        id: 'station-outline-layer', type: 'line', source: 'station-polygons-source',
-        paint: { 'line-color': ['get', 'lineColor'], 'line-width': ['get', 'lineWidth'] }
-      });
+    const trainDragger = document.getElementById('train-spawn-dragger');
+    trainDragger.addEventListener('dragstart', (e) => {
+      isDraggingTrain = true;
+      e.dataTransfer.setData('text/plain', 'train-spawn');
+      dragGhost.style.display = 'flex';
+    });
+    
+    window.addEventListener('dragover', (e) => {
+      if (!isDraggingTrain) return;
+      e.preventDefault();
+      dragGhost.style.left = (e.clientX - 10) + 'px';
+      dragGhost.style.top = (e.clientY - 10) + 'px';
+    });
 
-      // Semi-transparent rubberband / preview line source & layer
-      map.addSource('rubberband-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-      map.addLayer({
-        id: 'rubberband-layer',
-        type: 'line',
-        source: 'rubberband-source',
-        paint: {
-          'line-color': '#ffaa00',
-          'line-width': 2,
-          'line-dasharray': [3, 3],
-          'line-opacity': 0.65
+    window.addEventListener('dragend', () => {
+      isDraggingTrain = false;
+      dragGhost.style.display = 'none';
+    });
+
+    const mapContainer = document.getElementById('map');
+    mapContainer.addEventListener('dragover', (e) => { e.preventDefault(); });
+    mapContainer.addEventListener('drop', (e) => {
+      e.preventDefault();
+      isDraggingTrain = false;
+      dragGhost.style.display = 'none';
+
+      if (stations.length < 2) {
+        alert('A train requires at least two stations placed on the map to run.');
+        return;
+      }
+
+      const rect = mapContainer.getBoundingClientRect();
+      const point = [e.clientX - rect.left, e.clientY - rect.top];
+      const lngLat = map.unproject(point);
+
+      spawnTrainAtCoordinates([lngLat.lng, lngLat.lat]);
+    });
+
+    function spawnTrainAtCoordinates(coords) {
+      if (lines.length === 0) {
+        alert('Please create at least one rail line before spawning a train.');
+        return;
+      }
+
+      let closestLine = null;
+      let minSnapDist = Infinity;
+      let bestSnappedPt = null;
+
+      lines.forEach(lineItem => {
+        const cached = lineCache.get(lineItem.id);
+        if (!cached || !cached.spline) return;
+
+        const snapped = turf.nearestPointOnLine(cached.spline, turf.point(coords));
+        const dist = turf.distance(turf.point(coords), snapped, { units: 'meters' });
+
+        if (dist < minSnapDist) {
+          minSnapDist = dist;
+          closestLine = lineItem;
+          bestSnappedPt = snapped;
         }
       });
 
-      // Track layers
-      map.addSource('rail-bed-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-      map.addLayer({
-        id: 'rail-bed-layer', type: 'line', source: 'rail-bed-source',
-        layout: { 'line-cap': 'butt', 'line-join': 'round' },
-        paint: { 'line-color': '#1f242d', 'line-width': 10, 'line-opacity': 0.95 }
+      if (!closestLine || minSnapDist > 300) {
+        alert('Drop closer to an active rail line to spawn a train.');
+        return;
+      }
+
+      const cachedLine = lineCache.get(closestLine.id);
+      const lineStations = stations.filter(stn => {
+        const snapped = turf.nearestPointOnLine(cachedLine.spline, turf.point(stn.center));
+        const dist = turf.distance(turf.point(stn.center), snapped, { units: 'meters' });
+        return dist < 300;
       });
 
-      map.addSource('rail-ties-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-      map.addLayer({
-        id: 'rail-ties-layer', type: 'line', source: 'rail-ties-source',
-        layout: { 'line-cap': 'butt', 'line-join': 'round' },
-        paint: { 'line-color': '#a3876a', 'line-width': 8, 'line-dasharray': [0.3, 0.5] }
+      if (lineStations.length < 2) {
+        alert('There must be at least two stations associated with this rail line for the train to move between them.');
+        return;
+      }
+
+      const trainId = 'train_' + Date.now();
+      const snapLoc = bestSnappedPt.properties.location || 0;
+
+      trains.push({
+        id: trainId,
+        lineId: closestLine.id,
+        coordinates: bestSnappedPt.geometry.coordinates,
+        color: closestLine.themeColor || '#ffaa00',
+        progress: snapLoc,
+        speed: 0.04,
+        direction: 1,
+        stopTimer: 0,
+        currentSpeedMultiplier: 1.0,
+        lastStationHit: null
       });
 
-      map.addSource('steel-rails-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-      map.addLayer({
-        id: 'steel-rails-layer', type: 'line', source: 'steel-rails-source',
-        layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': '#f0f6fc', 'line-width': 2, 'line-gap-width': 3 }
+      renderAll();
+    }
+
+    const lineCustomModal = document.getElementById('line-custom-modal');
+    const lcNameInput = document.getElementById('lc-name-input');
+    const lcColorVal = document.getElementById('lc-color-val');
+    const lcMaxSpeedInput = document.getElementById('lc-max-speed');
+    const lcSpeedSlider = document.getElementById('lc-speed-slider');
+    const lcPrioritySelect = document.getElementById('lc-priority');
+    const lcCloseBtn = document.getElementById('lc-close-btn');
+
+    lcSpeedSlider.addEventListener('input', (e) => {
+      lcMaxSpeedInput.value = e.target.value;
+    });
+    lcMaxSpeedInput.addEventListener('input', (e) => {
+      lcSpeedSlider.value = e.target.value;
+    });
+
+    const swatches = document.querySelectorAll('.color-swatch');
+    swatches.forEach(swatch => {
+      swatch.addEventListener('click', () => {
+        swatches.forEach(s => s.classList.remove('selected'));
+        swatch.classList.add('selected');
+        const col = swatch.getAttribute('data-color');
+        lcColorVal.innerText = col;
+        lcColorVal.style.color = col;
       });
+    });
+
+    function openLineCustomization(lineId) {
+      customizingLineId = lineId;
+      const lineItem = lines.find(r => r.id === lineId);
+      if (!lineItem) return;
+
+      lcNameInput.value = lineItem.name;
+      const themeCol = lineItem.themeColor || '#ffaa00';
+      lcColorVal.innerText = themeCol;
+      lcColorVal.style.color = themeCol;
+
+      swatches.forEach(s => {
+        if (s.getAttribute('data-color') === themeCol) {
+          s.classList.add('selected');
+        } else {
+          s.classList.remove('selected');
+        }
+      });
+
+      const speed = lineItem.maxSpeed || 160;
+      lcMaxSpeedInput.value = speed;
+      lcSpeedSlider.value = speed;
+      lcPrioritySelect.value = lineItem.priority || 'Standard';
+
+      lineCustomModal.classList.add('active');
+    }
+
+    lcCloseBtn.addEventListener('click', () => {
+      if (customizingLineId) {
+        const lineItem = lines.find(r => r.id === customizingLineId);
+        if (lineItem) {
+          lineItem.name = lcNameInput.value.trim() || lineItem.name;
+          lineItem.themeColor = lcColorVal.innerText;
+          lineItem.maxSpeed = parseInt(lcMaxSpeedInput.value) || 160;
+          lineItem.priority = lcPrioritySelect.value;
+        }
+      }
+      lineCustomModal.classList.remove('active');
+      customizingLineId = null;
+      renderAll();
+    });
+
+    const trainCustomModal = document.getElementById('train-custom-modal');
+    const tcSpeedInput = document.getElementById('tc-speed-input');
+    const tcSpeedSlider = document.getElementById('tc-speed-slider');
+    const tcCloseBtn = document.getElementById('tc-close-btn');
+    const tcDeleteBtn = document.getElementById('tc-delete-btn');
+
+    tcSpeedSlider.addEventListener('input', (e) => {
+      tcSpeedInput.value = e.target.value;
+    });
+    tcSpeedInput.addEventListener('input', (e) => {
+      tcSpeedSlider.value = e.target.value;
+    });
+
+    function openTrainCustomization(trainId) {
+      customizingTrainId = trainId;
+      const train = trains.find(t => t.id === trainId);
+      if (!train) return;
+
+      const currentSpeed = train.speed !== undefined ? train.speed : 0.04;
+      tcSpeedInput.value = currentSpeed;
+      tcSpeedSlider.value = currentSpeed;
+
+      trainCustomModal.classList.add('active');
+    }
+
+    tcCloseBtn.addEventListener('click', () => {
+      if (customizingTrainId) {
+        const train = trains.find(t => t.id === customizingTrainId);
+        if (train) {
+          train.speed = parseFloat(tcSpeedInput.value) || 0.04;
+        }
+      }
+      trainCustomModal.classList.remove('active');
+      customizingTrainId = null;
+    });
+
+    tcDeleteBtn.addEventListener('click', () => {
+      if (customizingTrainId) {
+        trains = trains.filter(t => t.id !== customizingTrainId);
+        trainCustomModal.classList.remove('active');
+        customizingTrainId = null;
+        renderAll();
+      }
+    });
+
+    map.on('load', () => {
+      if (!map.getSource('station-polygons-source')) {
+        map.addSource('station-polygons-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+        map.addLayer({
+          id: 'station-roof-layer', type: 'fill', source: 'station-polygons-source',
+          paint: { 'fill-color': ['get', 'color'], 'fill-opacity': ['get', 'opacity'] }
+        });
+        map.addLayer({
+          id: 'station-outline-layer', type: 'line', source: 'station-polygons-source',
+          paint: { 'line-color': ['get', 'lineColor'], 'line-width': ['get', 'lineWidth'] }
+        });
+      }
+
+      if (!map.getSource('rail-bed-source')) {
+        map.addSource('rail-bed-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+
+        map.addLayer({
+          id: 'rail-ballast-base', type: 'line', source: 'rail-bed-source',
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-color': '#1c1e22',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 10, 4, 15, 14, 18, 24],
+            'line-opacity': 0.85
+          }
+        });
+
+        map.addLayer({
+          id: 'rail-concrete-bed', type: 'line', source: 'rail-bed-source',
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-color': '#3a424a',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 10, 2.5, 15, 9, 18, 16],
+            'line-opacity': 0.95
+          }
+        });
+
+        map.addLayer({
+          id: 'rail-color-distinction', type: 'line', source: 'rail-bed-source',
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-color': ['get', 'themeColor'],
+            'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1.2, 15, 3.5, 18, 6],
+            'line-opacity': 0.95
+          }
+        });
+
+        map.addLayer({
+          id: 'rail-sleepers', type: 'line', source: 'rail-bed-source',
+          layout: { 'line-cap': 'butt', 'line-join': 'round' },
+          paint: {
+            'line-color': '#e2e8f0',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 10, 2, 15, 7, 18, 13],
+            'line-dasharray': [0.4, 0.6]
+          }
+        });
+
+        map.addLayer({
+          id: 'steel-rails-left', type: 'line', source: 'rail-bed-source',
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-color': '#ffffff',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1, 15, 2, 18, 3.5],
+            'line-offset': ['interpolate', ['linear'], ['zoom'], 10, -1, 15, -3, 18, -5]
+          }
+        });
+
+        map.addLayer({
+          id: 'steel-rails-right', type: 'line', source: 'rail-bed-source',
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-color': '#ffffff',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1, 15, 2, 18, 3.5],
+            'line-offset': ['interpolate', ['linear'], ['zoom'], 10, 1, 15, 3, 18, 5]
+          }
+        });
+      }
+
+      if (!map.getSource('speed-check-source')) {
+        map.addSource('speed-check-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+        map.addLayer({
+          id: 'speed-check-layer', type: 'line', source: 'speed-check-source',
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-color': ['get', 'color'],
+            'line-width': ['interpolate', ['linear'], ['zoom'], 10, 3, 15, 8, 18, 14],
+            'line-opacity': 0.9
+          }
+        });
+      }
+
+      if (!map.getSource('travel-route-source')) {
+        map.addSource('travel-route-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+        map.addLayer({
+          id: 'travel-route-layer', type: 'line', source: 'travel-route-source',
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-color': '#34d399',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 10, 4, 15, 9, 18, 15],
+            'line-opacity': 0.85,
+            'line-dasharray': [0.5, 1.5]
+          }
+        });
+      }
+
+      if (!map.getSource('rubberband-source')) {
+        map.addSource('rubberband-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+        map.addLayer({
+          id: 'rubberband-layer', type: 'line', source: 'rubberband-source',
+          paint: { 'line-color': '#ffaa00', 'line-width': 2, 'line-dasharray': [3, 3], 'line-opacity': 0.85 }
+        });
+      }
 
       loadFromLocalStorage();
 
@@ -501,7 +1333,6 @@
         renderAll();
       }
 
-      // Mousemove for rubberband dashed preview
       map.on('mousemove', (e) => {
         currentMousePos = [e.lngLat.lng, e.lngLat.lat];
         updateRubberband();
@@ -538,31 +1369,253 @@
           undoLastPoint();
         }
       });
+
+      requestAnimationFrame(animateTrains);
     });
 
+    let lastAnimTime = performance.now();
+    let trainRenderAccumulator = 0;
+
+    // Fast point lookup along a spline. Unlike turf.along(), this avoids
+    // walking the entire LineString on every animation frame.
+    function getPointAtDistanceFast(spline, distanceKm, totalLenHint) {
+      const coords = spline && spline.geometry && spline.geometry.coordinates;
+      if (!coords || coords.length === 0) return null;
+      if (coords.length === 1) return coords[0];
+
+      if (!spline.properties) spline.properties = {};
+      let cum = spline.properties._cumDist;
+
+      if (!cum || cum.length !== coords.length) {
+        cum = new Array(coords.length);
+        cum[0] = 0;
+        for (let i = 1; i < coords.length; i++) {
+          cum[i] = cum[i - 1] + turf.distance(
+            turf.point(coords[i - 1]),
+            turf.point(coords[i]),
+            { units: 'kilometers' }
+          );
+        }
+        spline.properties._cumDist = cum;
+        spline.properties._totalFast = cum[cum.length - 1];
+      }
+
+      const total = totalLenHint > 0 ? totalLenHint : spline.properties._totalFast;
+      if (!(total > 0)) return coords[0];
+
+      const d = Math.max(0, Math.min(distanceKm, total));
+      if (d <= 0) return coords[0];
+      if (d >= total) return coords[coords.length - 1];
+
+      let lo = 0;
+      let hi = cum.length - 1;
+      while (lo < hi) {
+        const mid = (lo + hi) >> 1;
+        if (cum[mid] < d) lo = mid + 1;
+        else hi = mid;
+      }
+
+      const i = Math.max(1, lo);
+      const a = coords[i - 1];
+      const b = coords[i];
+      const segLen = cum[i] - cum[i - 1];
+      const t = segLen > 0 ? (d - cum[i - 1]) / segLen : 0;
+
+      return [
+        a[0] + (b[0] - a[0]) * t,
+        a[1] + (b[1] - a[1]) * t
+      ];
+    }
+
+    function animateTrains(currentTime) {
+      // Prevent a tab switch / temporary frame stall from causing a huge jump.
+      const delta = Math.min((currentTime - lastAnimTime) / 1000, 0.1);
+      lastAnimTime = currentTime;
+      trainRenderAccumulator += delta;
+
+      if (trains.length > 0) {
+        let needsUpdate = false;
+
+        trains.forEach(train => {
+          const cached = lineCache.get(train.lineId);
+          if (!cached || !cached.spline || cached.totalLen <= 0) return;
+
+          const spline = cached.spline;
+          const totalLen = cached.totalLen;
+
+          if (train.progress === undefined) train.progress = 0;
+          if (train.speed === undefined) train.speed = 0.04;
+          if (train.direction === undefined) train.direction = 1;
+          if (train.stopTimer === undefined) train.stopTimer = 0;
+          if (train.currentSpeedMultiplier === undefined) train.currentSpeedMultiplier = 1.0;
+
+          if (train.stopTimer > 0) {
+            train.stopTimer = Math.max(0, train.stopTimer - delta);
+            train.currentSpeedMultiplier = 0;
+            const stoppedPt = getPointAtDistanceFast(spline, train.progress, totalLen);
+            if (stoppedPt) {
+              train.coordinates = stoppedPt;
+              needsUpdate = true;
+            }
+            // Once the 2-second dwell is complete, give the train a small
+            // initial speed so it can leave the station instead of remaining
+            // at zero while the acceleration logic catches up.
+            if (train.stopTimer === 0) {
+              train.currentSpeedMultiplier = 0.15;
+            }
+            return;
+          }
+
+          let speedFactor = 1.0;
+          let nearestStationDistKm = Infinity;
+
+          // stationDistances are calculated once in rebuildLineCache().
+          // Only compare scalar distances here; no Turf geometry work per frame.
+          if (cached.stationDistances && cached.stationDistances.length > 0) {
+            for (const sd of cached.stationDistances) {
+              const distToStn = Math.abs(train.progress - sd.location);
+              if (distToStn < nearestStationDistKm) nearestStationDistKm = distToStn;
+            }
+          }
+
+          const approachRadiusKm = 0.8;
+          if (nearestStationDistKm < approachRadiusKm) {
+            const ratio = nearestStationDistKm / approachRadiusKm;
+            speedFactor = Math.max(0.15, ratio);
+          }
+
+          const accelRate = 1.5;
+          if (train.currentSpeedMultiplier < speedFactor) {
+            train.currentSpeedMultiplier = Math.min(
+              speedFactor,
+              train.currentSpeedMultiplier + accelRate * delta
+            );
+          } else if (train.currentSpeedMultiplier > speedFactor) {
+            train.currentSpeedMultiplier = Math.max(
+              speedFactor,
+              train.currentSpeedMultiplier - accelRate * delta
+            );
+          }
+
+          train.progress += train.direction * train.speed * train.currentSpeedMultiplier * delta;
+
+          if (train.progress >= totalLen) {
+            train.progress = totalLen;
+            train.direction = -1;
+          } else if (train.progress <= 0) {
+            train.progress = 0;
+            train.direction = 1;
+          }
+
+          const currentCoords = getPointAtDistanceFast(spline, train.progress, totalLen);
+          if (!currentCoords) return;
+
+          // Station stop detection using the cached chainage rather than
+          // nearestPointOnLine() for every station on every frame.
+          if (cached.stationDistances && cached.stationDistances.length > 0) {
+            for (const sd of cached.stationDistances) {
+              const distToStnKm = Math.abs(train.progress - sd.location);
+
+              // Only stop once for a station. stationId is used here (the
+              // cache stores stationId, not id). After the train has moved
+              // 80 m away, the station becomes eligible again.
+              if (distToStnKm < 0.02) { // 20 m station platform tolerance
+                if (train.lastStationHit !== sd.stationId) {
+                  train.stopTimer = 2.0; // exactly 2 seconds at the station
+                  train.lastStationHit = sd.stationId;
+                  train.currentSpeedMultiplier = 0;
+                  break;
+                }
+              } else if (distToStnKm > 0.08 && train.lastStationHit === sd.stationId) {
+                train.lastStationHit = null;
+              }
+            }
+          }
+
+          train.coordinates = currentCoords;
+          needsUpdate = true;
+        });
+
+        // DOM Marker.setLngLat() is relatively expensive. 30 FPS is visually
+        // smooth for trains while avoiding unnecessary layout work at 60+ FPS.
+        if (needsUpdate && trainRenderAccumulator >= (1 / 30)) {
+          trainRenderAccumulator = 0;
+          trains.forEach((train, index) => {
+            if (trainMarkers[index] && train.coordinates) {
+              trainMarkers[index].setLngLat(train.coordinates);
+            }
+          });
+        }
+      }
+
+      requestAnimationFrame(animateTrains);
+    }
+
+    document.getElementById('speed-check-toggle').addEventListener('change', (e) => {
+      isSpeedCheckActive = e.target.checked;
+      renderAll();
+    });
+
+    document.getElementById('chainage-toggle').addEventListener('change', (e) => {
+      isChainageActive = e.target.checked;
+      renderAll();
+    });
+
+    document.getElementById('travel-time-toggle').addEventListener('change', (e) => {
+      isTravelTimeActive = e.target.checked;
+      const card = document.getElementById('travel-time-card');
+      if (isTravelTimeActive) {
+        card.classList.add('active');
+      } else {
+        card.classList.remove('active');
+        resetTravelSelection();
+      }
+      renderAll();
+    });
+
+    document.getElementById('reset-travel-btn').addEventListener('click', () => {
+      resetTravelSelection();
+      renderAll();
+    });
+
+    function resetTravelSelection() {
+      travelOriginStation = null;
+      travelDestStation = null;
+      document.getElementById('tt-origin').innerText = 'Select Station...';
+      document.getElementById('tt-dest').innerText = 'Select Station...';
+      document.getElementById('tt-dist').innerText = '-';
+      document.getElementById('tt-time').innerText = '-';
+      if (map.getSource('travel-route-source')) {
+        map.getSource('travel-route-source').setData({ type: 'FeatureCollection', features: [] });
+      }
+    }
+
     function updateRubberband() {
+      if (!map.getSource('rubberband-source')) return;
+
       if (!isEditingMode || mode !== 'track' || !activeLineId || !currentMousePos) {
         map.getSource('rubberband-source').setData({ type: 'FeatureCollection', features: [] });
         return;
       }
 
       const activeLine = lines.find(r => r.id === activeLineId);
-      if (!activeLine || activeLine.coordinates.length === 0) {
+      if (!activeLine || !activeLine.coordinates || activeLine.coordinates.length === 0) {
         map.getSource('rubberband-source').setData({ type: 'FeatureCollection', features: [] });
         return;
       }
 
       const lastPoint = activeLine.coordinates[activeLine.coordinates.length - 1];
-      const previewLine = turf.lineString([lastPoint, currentMousePos]);
+      if (!lastPoint || lastPoint.length < 2) {
+        map.getSource('rubberband-source').setData({ type: 'FeatureCollection', features: [] });
+        return;
+      }
 
-      map.getSource('rubberband-source').setData({
-        type: 'FeatureCollection',
-        features: [previewLine]
-      });
+      const previewLine = turf.lineString([lastPoint, currentMousePos]);
+      map.getSource('rubberband-source').setData({ type: 'FeatureCollection', features: [previewLine] });
     }
 
     function saveToLocalStorage() {
-      const data = { lines: lines, stations: stations };
+      const data = { lines: lines, stations: stations, trains: trains };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     }
 
@@ -573,6 +1626,7 @@
           const parsed = JSON.parse(saved);
           lines = parsed.lines || [];
           stations = parsed.stations || [];
+          trains = parsed.trains || [];
         } catch (e) {
           console.error("Failed to load saved alignment data", e);
         }
@@ -584,8 +1638,10 @@
         localStorage.removeItem(STORAGE_KEY);
         lines = [];
         stations = [];
+        trains = [];
         activeLineId = null;
         activeStationId = null;
+        resetTravelSelection();
         startNewTrack('Main');
       }
     });
@@ -610,12 +1666,16 @@
       if (!isEditingMode) {
         finishActiveTrack();
         btn.innerText = '✏️ Resume Editing';
-        btn.style.background = '#d97706';
+        btn.style.background = 'linear-gradient(135deg, rgba(217, 119, 6, 0.35), rgba(217, 119, 6, 0.15))';
+        btn.style.borderColor = 'rgba(217, 119, 6, 0.5)';
+        btn.style.color = '#ffaa00';
         document.getElementById('active-status').innerText = 'Completed Alignment View';
         mapEl.classList.remove('crosshair-mode');
       } else {
         btn.innerText = '✔ Done Editing Alignment';
-        btn.style.background = '#238636';
+        btn.style.background = 'linear-gradient(135deg, rgba(35, 134, 54, 0.35), rgba(35, 134, 54, 0.15))';
+        btn.style.borderColor = 'rgba(74, 222, 128, 0.4)';
+        btn.style.color = '#4ade80';
         document.getElementById('active-status').innerText = 'Editing Active';
         mapEl.classList.add('crosshair-mode');
       }
@@ -679,29 +1739,75 @@
       if (activeStn) { activeStn.rotation = activeStationRotation; renderAll(); }
     });
 
-    document.getElementById('curve-tension').addEventListener('input', (e) => {
-      curveResolution = parseInt(e.target.value);
-      document.getElementById('tension-val').innerText = curveResolution + ' pts';
+    document.getElementById('export-kml-btn').addEventListener('click', exportToKML);
+
+    function exportToKML() {
+      let kml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+      kml += '<kml xmlns="http://www.opengis.net/kml/2.2">\n  <Document>\n    <name>Railway Route Studio Export</name>\n';
+
+      lines.forEach(lineItem => {
+        const cached = lineCache.get(lineItem.id);
+        if (!cached || !cached.spline) return;
+
+        kml += `    <Placemark>\n      <name>${lineItem.name}</name>\n      <LineString>\n        <coordinates>\n`;
+        cached.spline.geometry.coordinates.forEach(c => {
+          kml += `          ${c[0]},${c[1]},0\n`;
+        });
+        kml += `        </coordinates>\n      </LineString>\n    </Placemark>\n`;
+      });
+
+      stations.forEach(stn => {
+        kml += `    <Placemark>\n      <name>${stn.name}</name>\n      <Point>\n        <coordinates>${stn.center[0]},${stn.center[1]},0</coordinates>\n      </Point>\n    </Placemark>\n`;
+      });
+
+      kml += '  </Document>\n</kml>';
+
+      const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'railway_alignment.kml';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    document.getElementById('clear-btn').addEventListener('click', () => {
+      if (activeLineId) {
+        lines = lines.filter(r => r.id !== activeLineId);
+        activeLineId = null;
+      } else if (activeStationId) {
+        stations = stations.filter(s => s.id !== activeStationId);
+        activeStationId = null;
+      }
       renderAll();
+      updateRubberband();
     });
 
-    document.getElementById('export-kml-btn').addEventListener('click', exportToKML);
+    document.getElementById('coord-search-btn').addEventListener('click', () => {
+      const val = document.getElementById('coord-input').value.trim();
+      const parts = val.split(',').map(p => parseFloat(p.trim()));
+      if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+        map.flyTo({ center: [parts[1], parts[0]], zoom: 16 });
+      } else {
+        alert('Please enter valid coordinates in Lat, Lng format (e.g. 14.5995, 120.9842)');
+      }
+    });
 
     function placeStation(coords) {
       let calcRotation = activeStationRotation;
 
       lines.forEach(lineItem => {
-        if (lineItem.coordinates.length < 2) return;
-        const spline = buildCatmullRomRailwayPath(lineItem.coordinates, curveResolution);
-        if (!spline) return;
+        const cached = lineCache.get(lineItem.id);
+        if (!cached || !cached.spline) return;
 
-        const snapped = turf.nearestPointOnLine(spline, turf.point(coords));
+        const snapped = turf.nearestPointOnLine(cached.spline, turf.point(coords));
         const dist = turf.distance(turf.point(coords), snapped, { units: 'meters' });
 
         if (dist < 80) {
           coords = snapped.geometry.coordinates;
           const index = snapped.properties.index;
-          const splineCoords = spline.geometry.coordinates;
+          const splineCoords = cached.spline.geometry.coordinates;
           if (splineCoords[index + 1]) {
             calcRotation = turf.bearing(splineCoords[index], splineCoords[index + 1]);
           }
@@ -739,8 +1845,11 @@
         coordinates: [],
         isFinished: false,
         isBranch: type === 'Branch',
-        isDouble: false,
-        separation: 12
+        isDouble: document.getElementById('mirror-toggle').checked,
+        separation: parseInt(document.getElementById('separation-dist').value) || 12,
+        themeColor: '#ffaa00',
+        maxSpeed: 160,
+        priority: 'Standard'
       });
       activeLineId = newId;
       document.getElementById('active-status').innerText = `${type} Line ${typeCount}`;
@@ -763,12 +1872,36 @@
     }
 
     function renderAll() {
+      rebuildLineCache();
       renderStations();
       renderTracks();
       saveToLocalStorage();
     }
 
+    function rebuildLineCache() {
+      lineCache.clear();
+      lines.forEach(lineItem => {
+        if (!lineItem.coordinates || lineItem.coordinates.length < 2) return;
+        const spline = buildCatmullRomRailwayPath(lineItem.coordinates, MAX_CURVE_RESOLUTION);
+        if (spline) {
+          const totalLen = turf.length(spline, { units: 'kilometers' });
+          const stationDistances = stations.map(stn => {
+            try {
+              const snapped = turf.nearestPointOnLine(spline, turf.point(stn.center));
+              return { stationId: stn.id, location: snapped.properties.location || 0 };
+            } catch (e) {
+              return null;
+            }
+          }).filter(Boolean);
+
+          lineCache.set(lineItem.id, { spline, totalLen, stationDistances });
+        }
+      });
+    }
+
     function renderStations() {
+      if (!map.getSource('station-polygons-source')) return;
+
       const polygonFeatures = [];
 
       stations.forEach(stn => {
@@ -777,19 +1910,19 @@
         
         const mainRoof = createMeterBox(stn.center, 28, lenM, rot);
         if (mainRoof) {
-          mainRoof.properties = { color: '#00bcd4', opacity: 0.6, lineColor: '#00e5ff', lineWidth: 2 };
+          mainRoof.properties = { color: '#475569', opacity: 0.85, lineColor: '#94a3b8', lineWidth: 2 };
           polygonFeatures.push(mainRoof);
         }
 
         const platformL = createOffsetMeterBox(stn.center, -16, 5, lenM * 0.9, rot);
         if (platformL) {
-          platformL.properties = { color: '#ffaa00', opacity: 0.85, lineColor: '#ffcc00', lineWidth: 1 };
+          platformL.properties = { color: '#d97706', opacity: 0.9, lineColor: '#fbbf24', lineWidth: 1 };
           polygonFeatures.push(platformL);
         }
 
         const platformR = createOffsetMeterBox(stn.center, 16, 5, lenM * 0.9, rot);
         if (platformR) {
-          platformR.properties = { color: '#ffaa00', opacity: 0.85, lineColor: '#ffcc00', lineWidth: 1 };
+          platformR.properties = { color: '#d97706', opacity: 0.9, lineColor: '#fbbf24', lineWidth: 1 };
           polygonFeatures.push(platformR);
         }
       });
@@ -827,40 +1960,105 @@
     }
 
     function renderTracks() {
+      if (!map.getSource('rail-bed-source') || !map.getSource('speed-check-source')) return;
+
       const lineFeatures = [];
+      const speedCheckFeatures = [];
 
       lines.forEach(lineItem => {
-        if (lineItem.coordinates.length < 2) return;
+        const cached = lineCache.get(lineItem.id);
+        if (!cached || !cached.spline) return;
 
-        const mainSpline = buildCatmullRomRailwayPath(lineItem.coordinates, curveResolution);
-        if (mainSpline) lineFeatures.push(mainSpline);
+        const mainSpline = cached.spline;
+        mainSpline.properties = { themeColor: lineItem.themeColor || '#ffaa00' };
+        lineFeatures.push(mainSpline);
+        if (isSpeedCheckActive) {
+          speedCheckFeatures.push(...generateSpeedCheckSegments(mainSpline));
+        }
 
         if (lineItem.isDouble && mainSpline) {
           const separation = lineItem.separation !== undefined ? lineItem.separation : 12;
           const mirroredLine = generateParallelOffset(mainSpline, separation / 1000);
-          if (mirroredLine) lineFeatures.push(mirroredLine);
+          if (mirroredLine) {
+            mirroredLine.properties = { themeColor: lineItem.themeColor || '#ffaa00' };
+            lineFeatures.push(mirroredLine);
+            if (isSpeedCheckActive) {
+              speedCheckFeatures.push(...generateSpeedCheckSegments(mirroredLine));
+            }
+          }
         }
       });
 
-      const fc = { type: 'FeatureCollection', features: lineFeatures };
-      map.getSource('rail-bed-source').setData(fc);
-      map.getSource('rail-ties-source').setData(fc);
-      map.getSource('steel-rails-source').setData(fc);
+      map.getSource('rail-bed-source').setData({ type: 'FeatureCollection', features: lineFeatures });
+      map.getSource('speed-check-source').setData({ 
+        type: 'FeatureCollection', 
+        features: isSpeedCheckActive ? speedCheckFeatures : [] 
+      });
 
       syncMarkers();
       updateRoadsListUI();
     }
 
+    function generateSpeedCheckSegments(lineFeature) {
+      const coords = lineFeature.geometry.coordinates;
+      if (coords.length < 3) return [];
+
+      const segments = [];
+      for (let i = 1; i < coords.length - 1; i++) {
+        const pA = coords[i - 1];
+        const pB = coords[i];
+        const pC = coords[i + 1];
+
+        const radius = calculateRadius(pA, pB, pC);
+        
+        let color = '#22c55e';
+        if (radius < 300) {
+          color = '#ef4444';
+        } else if (radius < 600) {
+          color = '#eab308';
+        }
+
+        segments.push(turf.lineString([pA, pB], { color: color }));
+      }
+      return segments;
+    }
+
+    function calculateRadius(pA, pB, pC) {
+      const a = turf.distance(turf.point(pB), turf.point(pC), { units: 'meters' });
+      const b = turf.distance(turf.point(pA), turf.point(pC), { units: 'meters' });
+      const c = turf.distance(turf.point(pA), turf.point(pB), { units: 'meters' });
+      if (a === 0 || b === 0 || c === 0) return 10000;
+      const s = (a + b + c) / 2;
+      const areaSq = s * (s - a) * (s - b) * (s - c);
+      if (areaSq <= 0) return 10000;
+      const area = Math.sqrt(areaSq);
+      return (a * b * c) / (4 * area);
+    }
+
     function generateParallelOffset(splineFeature, offsetKm) {
       try {
-        return turf.lineOffset(splineFeature, offsetKm, { units: 'kilometers' });
+        if (!splineFeature || !splineFeature.geometry || !splineFeature.geometry.coordinates) return null;
+        const coords = splineFeature.geometry.coordinates;
+        if (coords.length < 2) return null;
+
+        const cleanCoords = [coords[0]];
+        for (let i = 1; i < coords.length; i++) {
+          const prev = cleanCoords[cleanCoords.length - 1];
+          const curr = coords[i];
+          const dist = Math.hypot(curr[0] - prev[0], curr[1] - prev[1]);
+          if (dist > 1e-7) cleanCoords.push(curr);
+        }
+
+        if (cleanCoords.length < 2) return null;
+        const cleanLine = turf.lineString(cleanCoords);
+        return turf.lineOffset(cleanLine, offsetKm, { units: 'kilometers' });
       } catch (e) {
         return null;
       }
     }
 
-    function buildCatmullRomRailwayPath(pts, samplesPerSegment = 16) {
-      if (pts.length < 2) return null;
+    function buildCatmullRomRailwayPath(pts, samplesPerSegment = 64) {
+      if (!pts || pts.length < 2) return null;
       if (pts.length === 2) return turf.lineString(pts);
 
       const p0_ext = [2 * pts[0][0] - pts[1][0], 2 * pts[0][1] - pts[1][1]];
@@ -868,7 +2066,6 @@
 
       const fullPts = [p0_ext, ...pts, pN_ext];
       const pathCoords = [];
-
       const alpha = 0.5;
 
       for (let i = 0; i < fullPts.length - 3; i++) {
@@ -888,7 +2085,7 @@
         const t2 = getT(t1, p1, p2);
         const t3 = getT(t2, p2, p3);
 
-        if (t1 === t0 || t2 === t1 || t3 === t2) {
+        if (Math.abs(t1 - t0) < 1e-6 || Math.abs(t2 - t1) < 1e-6 || Math.abs(t3 - t2) < 1e-6) {
           pathCoords.push(p1);
           continue;
         }
@@ -962,12 +2159,23 @@
       stations.forEach(stn => {
         const el = document.createElement('div');
         el.className = 'station-marker';
-        el.innerHTML = '🚉';
+        
+        if (isTravelTimeActive) {
+          if (travelOriginStation === stn.id) el.innerHTML = '🟢';
+          else if (travelDestStation === stn.id) el.innerHTML = '🏁';
+          else el.innerHTML = '🚉';
+        } else {
+          el.innerHTML = '🚉';
+        }
         el.style.fontSize = '18px';
 
         el.addEventListener('click', (e) => {
-          if (!isEditingMode) return;
           e.stopPropagation();
+          if (isTravelTimeActive) {
+            handleTravelStationClick(stn);
+            return;
+          }
+          if (!isEditingMode) return;
           activeStationId = stn.id;
           activeLineId = null;
           activeStationLength = stn.length;
@@ -991,6 +2199,7 @@
           const pos = marker.getLngLat();
           stn.center = [pos.lng, pos.lat];
           renderAll();
+          if (isTravelTimeActive) computeTravelTime();
         });
         marker.on('dragend', () => {
           setTimeout(() => { isDraggingNode = false; }, 100);
@@ -998,11 +2207,135 @@
 
         activeMarkers.push(marker);
       });
+
+      trains.forEach((train) => {
+        const tEl = document.createElement('div');
+        tEl.className = 'train-marker';
+        tEl.title = 'Click to adjust speed or delete train';
+
+        const col = train.color || '#ffaa00';
+
+        const ring = document.createElement('div');
+        ring.className = 'train-pulse-ring';
+        ring.style.background = col.replace(')', ', 0.4)').replace('rgb', 'rgba');
+
+        const dot = document.createElement('div');
+        dot.className = 'train-pulse-dot';
+        dot.style.background = col;
+
+        tEl.appendChild(ring);
+        tEl.appendChild(dot);
+
+        tEl.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openTrainCustomization(train.id);
+        });
+
+        const trainMarker = new maplibregl.Marker({ element: tEl, anchor: 'center' })
+          .setLngLat(train.coordinates)
+          .addTo(map);
+
+        trainMarkers.push(trainMarker);
+      });
+
+      if (isChainageActive) {
+        lines.forEach(lineItem => {
+          const cached = lineCache.get(lineItem.id);
+          if (!cached || !cached.spline) return;
+
+          for (let distKm = 1; distKm <= cached.totalLen; distKm += 1) {
+            try {
+              const ptAlong = turf.along(cached.spline, distKm, { units: 'kilometers' });
+              const coords = ptAlong.geometry.coordinates;
+
+              const pillEl = document.createElement('div');
+              pillEl.className = 'chainage-pill';
+              pillEl.innerText = `${distKm.toFixed(0)}+000 km`;
+
+              const chainMarker = new maplibregl.Marker({ element: pillEl, anchor: 'center' })
+                .setLngLat(coords)
+                .addTo(map);
+
+              chainageMarkers.push(chainMarker);
+            } catch (err) {}
+          }
+        });
+      }
+    }
+
+    function handleTravelStationClick(stn) {
+      if (!travelOriginStation) {
+        travelOriginStation = stn.id;
+        document.getElementById('tt-origin').innerText = stn.name;
+      } else if (!travelDestStation && stn.id !== travelOriginStation) {
+        travelDestStation = stn.id;
+        document.getElementById('tt-dest').innerText = stn.name;
+        computeTravelTime();
+      } else {
+        travelOriginStation = stn.id;
+        travelDestStation = null;
+        document.getElementById('tt-origin').innerText = stn.name;
+        document.getElementById('tt-dest').innerText = 'Select Station...';
+        document.getElementById('tt-dist').innerText = '-';
+        document.getElementById('tt-time').innerText = '-';
+        if (map.getSource('travel-route-source')) {
+          map.getSource('travel-route-source').setData({ type: 'FeatureCollection', features: [] });
+        }
+      }
+      renderAll();
+    }
+
+    function computeTravelTime() {
+      if (!travelOriginStation || !travelDestStation) return;
+      const stnX = stations.find(s => s.id === travelOriginStation);
+      const stnY = stations.find(s => s.id === travelDestStation);
+      if (!stnX || !stnY) return;
+
+      let bestSegmentLine = null;
+      let minCombinedDist = Infinity;
+
+      lines.forEach(lineItem => {
+        const cached = lineCache.get(lineItem.id);
+        if (!cached || !cached.spline) return;
+
+        const snapX = turf.nearestPointOnLine(cached.spline, turf.point(stnX.center));
+        const snapY = turf.nearestPointOnLine(cached.spline, turf.point(stnY.center));
+        const locX = snapX.properties.location;
+        const locY = snapY.properties.location;
+
+        const sliced = turf.lineSliceAlong(cached.spline, Math.min(locX, locY), Math.max(locX, locY), { units: 'kilometers' });
+        const len = turf.length(sliced, { units: 'kilometers' });
+
+        if (len < minCombinedDist) {
+          minCombinedDist = len;
+          bestSegmentLine = sliced;
+        }
+      });
+
+      if (bestSegmentLine) {
+        const distKm = minCombinedDist;
+        const avgSpeedKmh = 90;
+        const timeMinutes = Math.round((distKm / avgSpeedKmh) * 60);
+
+        document.getElementById('tt-dist').innerText = `${distKm.toFixed(2)} km`;
+        document.getElementById('tt-time').innerText = `${timeMinutes} mins (${avgSpeedKmh} km/h avg)`;
+
+        if (map.getSource('travel-route-source')) {
+          map.getSource('travel-route-source').setData({ type: 'FeatureCollection', features: [bestSegmentLine] });
+        }
+      } else {
+        document.getElementById('tt-dist').innerText = 'No connecting track';
+        document.getElementById('tt-time').innerText = '-';
+      }
     }
 
     function clearMarkers() {
       activeMarkers.forEach(m => m.remove());
       activeMarkers = [];
+      chainageMarkers.forEach(m => m.remove());
+      chainageMarkers = [];
+      trainMarkers.forEach(m => m.remove());
+      trainMarkers = [];
     }
 
     function updateRoadsListUI() {
@@ -1034,6 +2367,19 @@
         titleBox.appendChild(document.createTextNode(lineItem.isDouble ? '🚆🚆 ' : '🚆 '));
         titleBox.appendChild(nameInput);
 
+        const actionsBox = document.createElement('div');
+        actionsBox.style.display = 'flex';
+        actionsBox.style.gap = '2px';
+
+        const editBtn = document.createElement('button');
+        editBtn.className = 'action-icon-btn edit-custom-btn';
+        editBtn.innerText = '✏️';
+        editBtn.title = 'Customize Line Properties';
+        editBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openLineCustomization(lineItem.id);
+        });
+
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'action-icon-btn';
         deleteBtn.innerText = '🗑️';
@@ -1045,14 +2391,22 @@
           updateRubberband();
         });
 
+        actionsBox.appendChild(editBtn);
+        actionsBox.appendChild(deleteBtn);
+
         item.appendChild(titleBox);
-        item.appendChild(deleteBtn);
+        item.appendChild(actionsBox);
 
         item.addEventListener('click', () => {
           if (!isEditingMode) return;
           activeLineId = lineItem.id;
           activeStationId = null;
           document.getElementById('active-status').innerText = lineItem.name;
+          
+          document.getElementById('mirror-toggle').checked = !!lineItem.isDouble;
+          document.getElementById('separation-dist').value = lineItem.separation || 12;
+          document.getElementById('separation-val').innerText = (lineItem.separation || 12) + ' m';
+          
           renderAll();
           updateRubberband();
         });
@@ -1093,7 +2447,6 @@
           stations = stations.filter(s => s.id !== stn.id);
           if (activeStationId === stn.id) activeStationId = null;
           renderAll();
-          updateRubberband();
         });
 
         item.appendChild(titleBox);
@@ -1118,125 +2471,6 @@
         container.appendChild(item);
       });
     }
-
-    function exportToKML() {
-      let kml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-      kml += `<kml xmlns="http://www.opengis.net/kml/2.2">\n`;
-      kml += `  <Document>\n`;
-      kml += `    <name>NSCR Railway Alignments</name>\n`;
-
-      lines.forEach(lineItem => {
-        if (lineItem.coordinates.length < 2) return;
-        const spline = buildCatmullRomRailwayPath(lineItem.coordinates, curveResolution);
-        if (!spline) return;
-
-        const coordsString = spline.geometry.coordinates
-          .map(c => `${c[0]},${c[1]},0`)
-          .join(' ');
-
-        kml += `    <Placemark>\n`;
-        kml += `      <name>${lineItem.name}</name>\n`;
-        kml += `      <LineString>\n`;
-        kml += `        <tessellate>1</tessellate>\n`;
-        kml += `        <coordinates>${coordsString}</coordinates>\n`;
-        kml += `      </LineString>\n`;
-        kml += `    </Placemark>\n`;
-
-        if (lineItem.isDouble) {
-          const separation = lineItem.separation !== undefined ? lineItem.separation : 12;
-          const mirrored = generateParallelOffset(spline, separation / 1000);
-          if (mirrored) {
-            const mCoordsString = mirrored.geometry.coordinates
-              .map(c => `${c[0]},${c[1]},0`)
-              .join(' ');
-
-            kml += `    <Placemark>\n`;
-            kml += `      <name>${lineItem.name} (Track 2)</name>\n`;
-            kml += `      <LineString>\n`;
-            kml += `        <tessellate>1</tessellate>\n`;
-            kml += `        <coordinates>${mCoordsString}</coordinates>\n`;
-            kml += `      </LineString>\n`;
-            kml += `    </Placemark>\n`;
-          }
-        }
-      });
-
-      stations.forEach(stn => {
-        kml += `    <Placemark>\n`;
-        kml += `      <name>${stn.name}</name>\n`;
-        kml += `      <Point>\n`;
-        kml += `        <coordinates>${stn.center[0]},${stn.center[1]},0</coordinates>\n`;
-        kml += `      </Point>\n`;
-        kml += `    </Placemark>\n`;
-      });
-
-      kml += `  </Document>\n`;
-      kml += `</kml>`;
-
-      const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `NSCR_Alignment_${Date.now()}.kml`;
-      link.click();
-    }
-
-    document.getElementById('finish-btn').addEventListener('click', finishActiveTrack);
-
-    document.getElementById('clear-btn').addEventListener('click', () => {
-      if (activeLineId) {
-        lines = lines.filter(r => r.id !== activeLineId);
-        activeLineId = null;
-        renderAll();
-        updateRubberband();
-      } else if (activeStationId) {
-        stations = stations.filter(s => s.id !== activeStationId);
-        activeStationId = null;
-        renderAll();
-        updateRubberband();
-      }
-    });
-    
-    let searchMarker = null;
-
-    function handleCoordinateSearch() {
-      const input = document.getElementById('coord-input').value.trim();
-      if (!input) return;
-
-      const parts = input.split(/[\s,]+/);
-      if (parts.length >= 2) {
-        let val1 = parseFloat(parts[0]);
-        let val2 = parseFloat(parts[1]);
-
-        if (isNaN(val1) || isNaN(val2)) {
-          alert('Invalid coordinates format. Use "Lat, Lng" or "Lng, Lat".');
-          return;
-        }
-
-        let lat, lng;
-        if (Math.abs(val1) <= 90 && Math.abs(val2) <= 180) {
-          lat = val1;
-          lng = val2;
-        } else if (Math.abs(val2) <= 90 && Math.abs(val1) <= 180) {
-          lng = val1;
-          lat = val2;
-        } else {
-          alert('Coordinates out of bounds (-90 to 90 for Lat, -180 to 180 for Lng).');
-          return;
-        }
-
-        map.flyTo({ center: [lng, lat], zoom: 16 });
-
-        if (searchMarker) searchMarker.remove();
-        searchMarker = new maplibregl.Marker({ color: '#ffaa00' })
-          .setLngLat([lng, lat])
-          .addTo(map);
-      }
-    }
-
-    document.getElementById('coord-search-btn').addEventListener('click', handleCoordinateSearch);
-    document.getElementById('coord-input').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') handleCoordinateSearch();
-    });
   </script>
 </body>
 </html>
